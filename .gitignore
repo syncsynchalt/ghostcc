@@ -1,4 +1,2 @@
-hello
-test
-test2
-*.o
+test-asm/*.o
+test-asm/prog-*
