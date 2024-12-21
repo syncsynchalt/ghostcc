@@ -1,2 +1,3 @@
-test-asm/*.o
+*.o
 test-asm/prog-*
+pp/ghostpp
