@@ -3,15 +3,7 @@ extern "C" {
 #include "../lex.h"
 }
 
-TEST(LexTest, Identifier)
-{
-    const auto line = "abc";
-    token_state s = {};
-    ASSERT_EQ(0, get_token(line, strlen(line), &s));
-    ASSERT_EQ(TOK_ID, s.type);
-    ASSERT_STREQ("abc", s.tok);
-    ASSERT_EQ(0, s.pos);
-}
+
 
 static void assert_token(const char *l, token_state &s, const token_type type, const std::string &token,
                          const bool eol = false, const int pos = -1)
@@ -22,6 +14,20 @@ static void assert_token(const char *l, token_state &s, const token_type type, c
     if (pos >= 0) {
         ASSERT_EQ(pos, s.pos);
     }
+}
+
+TEST(LexTest, Empty)
+{
+    const auto line = "";
+    token_state s = {};
+    assert_token(line, s, TOK_ERR, "", true, 0);
+}
+
+TEST(LexTest, Identifier)
+{
+    const auto line = "abc";
+    token_state s = {};
+    assert_token(line, s, TOK_ID, "abc", true, 0);
 }
 
 TEST(LexTest, Keyword)
@@ -38,20 +44,19 @@ TEST(LexTest, Keyword)
 
 TEST(LexTest, Illegal)
 {
-    auto line = "foo éuler";
+    auto line = "foo élan";
     token_state s = {};
-    assert_token(line, s, TOK_ID, "foo", false);
-    assert_token(line, s, TOK_WS, " ", false);
-    EXPECT_DEATH({
-        get_token(line, strlen(line), &s);
-    }, "illegal character");
+    assert_token(line, s, TOK_ID, "foo");
+    assert_token(line, s, TOK_WS, " ");
+    assert_token(line, s, TOK_ERR, "é");
+    assert_token(line, s, TOK_ID, "lan", true);
 
     line = "foo @ bar";
-    assert_token(line, s, TOK_ID, "foo", false);
-    assert_token(line, s, TOK_WS, " ", false);
-    EXPECT_DEATH({
-        get_token(line, strlen(line), &s);
-    }, "illegal character");
+    assert_token(line, s, TOK_ID, "foo");
+    assert_token(line, s, TOK_WS, " ");
+    assert_token(line, s, TOK_ERR, "@");
+    assert_token(line, s, TOK_WS, " ");
+    assert_token(line, s, TOK_ID, "bar", true);
 }
 
 TEST(LexTest, LineReset)
@@ -69,9 +74,15 @@ TEST(LexTest, LineReset)
 
 TEST(LexTest, Numbers)
 {
-    const auto line = "123 234.0 13e4 10u 10U 11l 13f 14.0F 1.2e10l";
+    const auto line = "-2 -2.3e-10 123 234.0 13e4 10u 10U 11l 13f 14.0F 1.2e10l";
     token_state s = {};
 
+    assert_token(line, s, TOK_MINUS, "-");
+    assert_token(line, s, TOK_NUM, "2");
+    assert_token(line, s, TOK_WS, " ");
+    assert_token(line, s, TOK_MINUS, "-");
+    assert_token(line, s, TOK_NUM, "2.3e-10");
+    assert_token(line, s, TOK_WS, " ");
     assert_token(line, s, TOK_NUM, "123");
     assert_token(line, s, TOK_WS, " ");
     assert_token(line, s, TOK_NUM, "234.0");
@@ -252,4 +263,18 @@ TEST(LexTest, NestedComment)
     assert_token(line, s, TOK_ID, "foo");
     assert_token(line, s, TOK_COMMENT, " ");
     assert_token(line, s, TOK_ID, "money", true);
+}
+
+TEST(LexTest, NonCToken)
+{
+    auto line = "foo@bar";
+    token_state s = {};
+    assert_token(line, s, TOK_ID, "foo");
+    assert_token(line, s, TOK_ERR, "@");
+    assert_token(line, s, TOK_ID, "bar", true);
+
+    line = "foo@@bar";
+    assert_token(line, s, TOK_ID, "foo");
+    assert_token(line, s, TOK_ERR, "@@");
+    assert_token(line, s, TOK_ID, "bar", true);
 }

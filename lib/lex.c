@@ -67,6 +67,20 @@ static int die_at(const token_state *token, const size_t ind, const char *msg)
     exit(1);
 }
 
+static int eat_err(const char *line, const size_t line_len, token_state *token)
+{
+    size_t i;
+    for (i = token->_i; i < line_len - 1; i++) {
+        if (!line[i]) {
+            break;
+        }
+        if ((unsigned char)line[i] < 0x7f && tok_start[line[i]] != TOK_ERR) {
+            break;
+        }
+    }
+    return copy_token(token, TOK_ERR, i - token->_i);
+}
+
 static int eat_comment(const char *line, const size_t line_len, token_state *token)
 {
     size_t i;
@@ -108,14 +122,14 @@ int get_token(const char *line, size_t line_len, token_state *token)
     int line_done;
 
     token_type type;
-    if (((unsigned char)line[token->_i]) > 127) {
-        return die_at(token, token->_i, "illegal character");
+    if ((unsigned char)line[token->_i] > 127) {
+        return eat_err(line, line_len, token);
     }
 
     switch ((type = tok_start[line[token->_i]])) {
     case TOK_ERR:
         // unrecognized symbol
-        return die_at(token, token->_i, "illegal character");
+        return eat_err(line, line_len, token);
 
     case TOK_WS:
         // whitespace
@@ -159,6 +173,9 @@ int get_token(const char *line, size_t line_len, token_state *token)
             len += strspn(p + len, NUMERIC);
             if (p[len] == 'e') {
                 len += 1;
+                if (p[len] == '-') {
+                    len++;
+                }
                 len += strspn(p + len, NUMERIC);
             }
             len += strspn(p + len, "uUlLfF");
@@ -357,6 +374,6 @@ int get_token(const char *line, size_t line_len, token_state *token)
         return copy_token(token, TOK_DOT, 1);
 
     default:
-        return die_at(token, token->_i, "unrecognized character");
+        return die_at(token, token->_i, "unmapped character");
     }
 }

@@ -1,6 +1,8 @@
 #ifndef INC_HASHMAP_H
 #define INC_HASHMAP_H
 
+#include <stdlib.h>
+
 typedef struct {
     const char *key;
     const void *data;

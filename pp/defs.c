@@ -1,11 +1,14 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include "defs.h"
-#include "panic.h"
-#include "common.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-static char **tokenify(const char *s);
+#include "lex.h"
+
+// ReSharper disable CppDFANullDereference
+
+static char **parse_args(const char *name, const char *args);
+static char **parse_replace(const char *replace);
 
 /*
  * Add a #define
@@ -19,50 +22,82 @@ void defines_add(const defines *defs, const char *name, const char *args, const 
 {
     def *d = calloc(1, sizeof(*d));
     d->name = strdup(name);
-    d->args = tokenify(args);
-    d->replace = tokenify(replace);
+    d->args = parse_args(name, args);
+    d->replace = parse_replace(replace);
 
     hashmap_add(defs->h, name, d);
 }
 
-static char **tokenify(const char *s)
+static char **parse_args(const char *name, const char *args)
 {
+    token_state s = {};
     char **result = NULL;
-    int ntok = 0;
-    int len;
+    int comma_counter = 0;
+    size_t n = 0;
 
-    if (!s) {
+    if (!args) {
         return NULL;
     }
 
-    while (*s) {
-        if (*s == '"') {
-            len = strcspn(s+1, "\"");
-            if (*(s+1+len) != '"') {
-                panic("missing end quote");
+    const size_t len = strlen(args);
+    for (;;) {
+        const int ret = get_token(args, len, &s);
+        if (s.type == TOK_WS) {
+            // ignore
+        } else if (s.type == TOK_COMMA) {
+            if (comma_counter % 2 != 1) {
+                fprintf(stderr, "Error in #define %s(%s): extra comma", name, args);
+                exit(1);
             }
-            len += 2;
+            comma_counter++;
+        } else if (s.type == TOK_ID) {
+            if (comma_counter % 2 != 0) {
+                fprintf(stderr, "Error in #define %s(%s): missing comma", name, args);
+                exit(1);
+            }
+            comma_counter++;
+            if (n % 5 == 0) {
+                result = realloc(result, sizeof(*result) * (n + 6));
+            }
+            result[n++] = strdup(s.tok);
         } else {
-            len = strcspn(s, WHITESPACE);
+            fprintf(stderr, "Error in #define %s(%s): bad arg %s", name, args, s.tok);
+            exit(1);
         }
-
-        if (ntok % 5 == 0) {
-            result = realloc(result, sizeof(char *) * (ntok + 5));
+        if (!ret) {
+            break;
         }
-        result[ntok] = malloc(len+1);
-        strncpy(result[ntok], s, len);
-        result[ntok][len] = '\0';
-        ntok++;
+    }
+    if (result && n) {
+        result[n++] = NULL;
+    }
+    return result;
+}
 
-        s += len;
-        s += strspn(s, WHITESPACE);
+static char **parse_replace(const char *replace)
+{
+    token_state s = {};
+    char **result = NULL;
+    size_t n = 0;
+
+    if (!replace) {
+        return NULL;
     }
 
-    if (ntok % 5 == 0) {
-        result = realloc(result, sizeof(char *) * (ntok + 5));
+    const size_t len = strlen(replace);
+    for (;;) {
+        const int ret = get_token(replace, len, &s);
+        if (n % 5 == 0) {
+            result = realloc(result, sizeof(*result) * (n + 6));
+        }
+        result[n++] = strdup(s.tok);
+        if (!ret) {
+            break;
+        }
     }
-    result[ntok] = NULL;
-
+    if (result && n) {
+        result[n++] = NULL;
+    }
     return result;
 }
 
@@ -462,7 +497,7 @@ defines *defines_init(void)
     defines_add(defs, "__UINT_LEAST8_MAX__", NULL, "255");
     defines_add(defs, "__UINT_LEAST8_TYPE__", NULL, "unsigned char");
     defines_add(defs, "__USER_LABEL_PREFIX__", NULL, "_");
-    defines_add(defs, "__VERSION__", NULL, "ghostcc 0.1");
+    defines_add(defs, "__VERSION__", NULL, "ghostcc @ 0.1");
     defines_add(defs, "__WCHAR_MAX__", NULL, "2147483647");
     defines_add(defs, "__WCHAR_TYPE__", NULL, "int");
     defines_add(defs, "__WCHAR_WIDTH__", NULL, "32");

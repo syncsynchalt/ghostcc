@@ -21,22 +21,32 @@ TEST(DefsTest, AddToken)
     defines_destroy(defs);
 }
 
-TEST(DefsTest, DISABLED_AddSubst)
+TEST(DefsTest, AddSubst)
 {
     defines *defs = defines_init();
-    defines_add(defs, "FOO", NULL, "a b c");
+    defines_add(defs, "FOO", NULL, "a = b + c->d");
     const def *d = defines_get(defs, "FOO");
     ASSERT_TRUE(d);
     ASSERT_STREQ("FOO", d->name);
     ASSERT_EQ(NULL, d->args);
-    const char *expected[] = {"a", "b", "c", NULL};
+    const char *expected[] = {"a", " ", "=", " ", "b", " ", "+", " ", "c", "->", "d", NULL};
     for (int i = 0; i < sizeof(expected) / sizeof(*expected); i++) {
         ASSERT_STREQ(expected[i], d->replace[i]);
     }
     defines_destroy(defs);
 }
 
-TEST(DefsTest, DISABLED_AddMacro)
+static std::vector<std::string> make_vector(const char **arr)
+{
+    std::vector<std::string> v;
+    int i = 0;
+    for (i = 0; arr[i]; i++) {
+        v.emplace_back(arr[i]);
+    }
+    return v;
+}
+
+TEST(DefsTest, AddMacro)
 {
     defines *defs = defines_init();
     defines_add(defs, "FOO", "a, b, c", "aa = a; bb = b;");
@@ -44,13 +54,9 @@ TEST(DefsTest, DISABLED_AddMacro)
     ASSERT_TRUE(d);
     ASSERT_STREQ("FOO", d->name);
     const char *e_args[] = {"a", "b", "c", NULL};
-    for (int i = 0; i < sizeof(e_args) / sizeof(*e_args); i++) {
-        ASSERT_STREQ(e_args[i], d->args[i]);
-    }
-    const char *e_replace[] = {"aa", " ", "=", " ", "a", ";", "bb", " ", "=", " ", "b", ";", NULL};
-    for (int i = 0; i < sizeof(e_replace) / sizeof(*e_replace); i++) {
-        ASSERT_STREQ(e_replace[i], d->replace[i]);
-    }
+    ASSERT_EQ(make_vector(e_args), make_vector(d->args));
+    const char *e_replace[] = {"aa", " ", "=", " ", "a", ";", " ", "bb", " ", "=", " ", "b", ";", NULL};
+    ASSERT_EQ(make_vector(e_replace), make_vector(d->replace));
 
     defines_destroy(defs);
 }
