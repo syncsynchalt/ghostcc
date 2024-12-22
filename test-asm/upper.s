@@ -19,7 +19,7 @@ _main:
 
     // The loop is until byte pointed to by X1 is non-zero
 loop:
-    LDRB W5, [X4], #1 // load character and incr pointer
+    LDRB W5, [X4], #1 // load character and increment pointer
     // If W5 > 'z' then goto cont
     CMP W5, #'z' // is letter > 'z'?
     B.GT cont

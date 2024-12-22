@@ -1,3 +1,7 @@
 *.o
+*.a
 test-asm/prog-*
 pp/ghostpp
+*/tests/tests
+
+.idea

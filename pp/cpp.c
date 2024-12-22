@@ -1,6 +1,5 @@
 #include <unistd.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include "defs.h"
@@ -16,7 +15,7 @@ void usage(int argc, char **argv)
 }
 
 
-int main(int argc, char **argv)
+int main(const int argc, char **argv)
 {
     int arg;
 
@@ -51,7 +50,7 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    defines *defs = init_defines();
+    const defines *defs = defines_init();
 
     parse(in, out, defs);
 }

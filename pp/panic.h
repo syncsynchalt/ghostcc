@@ -1,5 +1,5 @@
-#ifndef INC_PANIC_H__
-#define INC_PANIC_H__
+#ifndef INC_PANIC_H
+#define INC_PANIC_H
 
 extern void panic(const char *reason);
 

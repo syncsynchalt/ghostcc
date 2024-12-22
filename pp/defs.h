@@ -1,19 +1,21 @@
-#ifndef INC_DEFS_H__
-#define INC_DEFS_H__
+#ifndef INC_DEFS_H
+#define INC_DEFS_H
 
-typedef struct _def {
+#include "hashmap.h"
+
+typedef struct {
     char *name;
     char **args;
     char **replace;
 } def;
 
-typedef struct _defines {
-    int cur;
-    int max;
-    def *defs;
+typedef struct {
+    hashmap *h;
 } defines;
 
-extern defines *init_defines(void);
-extern void add_define(defines *defs, const char *name, const char *args, const char *replace);
+extern defines *defines_init(void);
+extern void defines_destroy(defines *defs);
+extern void defines_add(const defines *defs, const char *name, const char *args, const char *replace);
+extern const def *defines_get(const defines *defs, const char *name);
 
 #endif

@@ -1,9 +1,9 @@
-#ifndef INC_PARSE_H__
-#define INC_PARSE_H__
+#ifndef INC_PARSE_H
+#define INC_PARSE_H
 
 #include <stdio.h>
 #include "defs.h"
 
-extern void parse(FILE *in, FILE *out, defines *defs);
+extern void parse(FILE *in, FILE *out, const defines *defs);
 
 #endif
