@@ -36,7 +36,7 @@ TEST(DefsTest, AddSubst)
     defines_destroy(defs);
 }
 
-static std::vector<std::string> make_vector(const char **arr)
+static std::vector<std::string> make_vector(const char * const *arr)
 {
     std::vector<std::string> v;
     int i = 0;

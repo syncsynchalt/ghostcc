@@ -1,4 +1,6 @@
 #include "defs.h"
+
+#include <die.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,19 +43,17 @@ static char **parse_args(const char *name, const char *args)
 
     const size_t len = strlen(args);
     for (;;) {
-        const int ret = get_token(args, len, &s);
+        const int eol = get_token(args, len, &s);
         if (s.type == TOK_WS) {
             // ignore
         } else if (s.type == TOK_COMMA) {
             if (comma_counter % 2 != 1) {
-                fprintf(stderr, "Error in #define %s(%s): extra comma", name, args);
-                exit(1);
+                die("#define %s args extra comma in %s", name, args);
             }
             comma_counter++;
-        } else if (s.type == TOK_ID) {
+        } else if (s.type == TOK_ID || s.type == TOK_KEYWORD) {
             if (comma_counter % 2 != 0) {
-                fprintf(stderr, "Error in #define %s(%s): missing comma", name, args);
-                exit(1);
+                die("#define %s args missing comma in %s", name, args);
             }
             comma_counter++;
             if (n % 5 == 0) {
@@ -61,15 +61,14 @@ static char **parse_args(const char *name, const char *args)
             }
             result[n++] = strdup(s.tok);
         } else {
-            fprintf(stderr, "Error in #define %s(%s): bad arg %s", name, args, s.tok);
-            exit(1);
+            die("#define %s(%s) bad arg %s", name, args, s.tok);
         }
-        if (!ret) {
+        if (eol) {
             break;
         }
     }
     if (result && n) {
-        result[n++] = NULL;
+        result[n] = NULL;
     }
     return result;
 }
@@ -86,17 +85,17 @@ static char **parse_replace(const char *replace)
 
     const size_t len = strlen(replace);
     for (;;) {
-        const int ret = get_token(replace, len, &s);
+        const int eol = get_token(replace, len, &s);
         if (n % 5 == 0) {
             result = realloc(result, sizeof(*result) * (n + 6));
         }
         result[n++] = strdup(s.tok);
-        if (!ret) {
+        if (eol) {
             break;
         }
     }
-    if (result && n) {
-        result[n++] = NULL;
+    if (n) {
+        result[n] = NULL;
     }
     return result;
 }
@@ -533,13 +532,13 @@ void defines_destroy(defines *defs)
 
     while ((e = hashmap_iter(defs->h, &iter))) {
         def *d = (def *)e->data;
-        free(d->name);
+        free((void *)d->name);
         int i;
         for (i = 0; d->args && d->args[i]; i++) {
-            free(d->args[i]);
+            free((void *)d->args[i]);
         }
         for (i = 0; d->replace && d->replace[i]; i++) {
-            free(d->replace[i]);
+            free((void *)d->replace[i]);
         }
         free(d);
     }

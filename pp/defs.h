@@ -4,9 +4,9 @@
 #include "hashmap.h"
 
 typedef struct {
-    const char *name;
-    const char **args;
-    const char **replace;
+    char *name;
+    char **args;
+    char **replace;
 } def;
 
 typedef struct {

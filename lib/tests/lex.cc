@@ -8,7 +8,7 @@ extern "C" {
 static void assert_token(const char *l, token_state &s, const token_type type, const std::string &token,
                          const bool eol = false, const int pos = -1)
 {
-    ASSERT_EQ(eol ? 0 : 1, get_token(l, strlen(l), &s));
+    ASSERT_EQ(eol ? 1 : 0, get_token(l, strlen(l), &s));
     ASSERT_EQ(type, s.type);
     ASSERT_EQ(token, s.tok);
     if (pos >= 0) {
@@ -18,9 +18,13 @@ static void assert_token(const char *l, token_state &s, const token_type type, c
 
 TEST(LexTest, Empty)
 {
-    const auto line = "";
+    auto line = "";
     token_state s = {};
     assert_token(line, s, TOK_ERR, "", true, 0);
+
+    line = "\n";
+    assert_token(line, s, TOK_WS, "\n", true, 0);
+    assert_token(line, s, TOK_ERR, "", true, 1);
 }
 
 TEST(LexTest, Identifier)
@@ -277,4 +281,17 @@ TEST(LexTest, NonCToken)
     assert_token(line, s, TOK_ID, "foo");
     assert_token(line, s, TOK_ERR, "@@");
     assert_token(line, s, TOK_ID, "bar", true);
+}
+
+TEST(LexTest, DecodeStr)
+{
+    char buf[512];
+    EXPECT_STREQ("foo", decode_str(R"("foo")", buf, sizeof(buf)));
+    EXPECT_STREQ("foo\b baz", decode_str(R"("foo\b baz")", buf, sizeof(buf)));
+    EXPECT_STREQ("foo\n baz", decode_str(R"("foo\n baz")", buf, sizeof(buf)));
+    EXPECT_STREQ("foo z baz", decode_str(R"("foo \z baz")", buf, sizeof(buf)));
+    EXPECT_STREQ("foo \\ baz", decode_str(R"("foo \\ baz")", buf, sizeof(buf)));
+    EXPECT_STREQ("foo A baz", decode_str(R"("foo \101 baz")", buf, sizeof(buf)));
+    EXPECT_STREQ("foo A baz", decode_str(R"("foo \x41 baz")", buf, sizeof(buf)));
+    EXPECT_STREQ("foo X41 baz", decode_str(R"("foo \X41 baz")", buf, sizeof(buf)));
 }

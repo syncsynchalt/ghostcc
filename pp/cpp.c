@@ -1,7 +1,6 @@
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
 #include <errno.h>
+#include <string.h>
+#include <unistd.h>
 #include "defs.h"
 #include "parse.h"
 
@@ -10,7 +9,7 @@ static char *outfile = NULL;
 
 void usage(int argc, char **argv)
 {
-    fprintf(stderr, "Usage: %s infile [[-o] outfile]\n", argv[0]);
+    fprintf(stderr, "Usage: %s infile [[-o] outfile] [-I include_path]\n", argv[0]);
     exit(1);
 }
 
@@ -18,15 +17,27 @@ void usage(int argc, char **argv)
 int main(const int argc, char **argv)
 {
     int arg;
+    const char **include_paths = NULL;
+    int num_include_paths = 0;
 
-    while ((arg = getopt(argc, argv, "o:")) != -1) {
+    include_paths = malloc(sizeof(*include_paths) * (num_include_paths + 6));
+    include_paths[num_include_paths++] = strdup("/usr/include");
+
+    while ((arg = getopt(argc, argv, "o:I:")) != -1) {
         if (arg == '?' || arg == ':') {
             usage(argc, argv);
         }
         if (arg == 'o') {
             outfile = optarg;
         }
+        if (arg == 'I') {
+            if (num_include_paths % 5 == 0) {
+                include_paths = realloc(include_paths, sizeof(*include_paths) * 6);
+                include_paths[num_include_paths++] = strdup(optarg);
+            }
+        }
     }
+    include_paths[num_include_paths] = NULL;
     if (optind >= argc) {
         usage(argc, argv);
     }
@@ -52,5 +63,13 @@ int main(const int argc, char **argv)
 
     const defines *defs = defines_init();
 
-    parse(in, out, defs);
+    parse(in, out, defs, include_paths);
+    fclose(out);
+    fclose(in);
+
+    int i;
+    for (i = 0; i < num_include_paths; i++) {
+        free((void *)include_paths[i]);
+    }
+    free(include_paths);
 }
