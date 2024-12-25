@@ -1,8 +1,7 @@
+#include "hashmap.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include "hashmap.h"
 
 // djb2 hash function
 static unsigned int hash_function(const char *k, const unsigned int mask)

@@ -7,9 +7,18 @@
 #include "die.h"
 #include "lex.h"
 
-static void process_directive(const char *line, size_t line_len, FILE *in, FILE *out, const defines *defs,
-                              const char * const *include_paths);
-static void process_tokens(const char *line, size_t line_len, FILE *out, const defines *defs);
+typedef struct {
+    int if_level;
+    int mask_level;
+    const defines *defs;
+    const char * const *include_paths;
+    FILE *out;
+} parse_state;
+
+static void process_directive(const char *line, size_t line_len, FILE *in, parse_state *state);
+static void process_tokens(const char *line, size_t line_len, parse_state *state);
+
+// ReSharper disable CppParameterMayBeConstPtrOrRef
 
 void parse(FILE *in, FILE *out, const defines *defs, const char * const *include_paths)
 {
@@ -17,11 +26,18 @@ void parse(FILE *in, FILE *out, const defines *defs, const char * const *include
     size_t linecap;
     int len;
 
+    parse_state state = {};
+    state.defs = defs;
+    state.include_paths = include_paths;
+    state.out = out;
+
     while ((len = getline(&line, &linecap, in)) > 0) {
         if (line[0] == '#') {
-            process_directive(line, len, in, out, defs, include_paths);
+            process_directive(line, len, in, &state);
         } else {
-            process_tokens(line, len, out, defs);
+            if (!state.mask_level) {
+                process_tokens(line, len, &state);
+            }
         }
     }
     if (ferror(in)) {
@@ -46,8 +62,28 @@ static int resolve_include_path(char *filename, const size_t len, const char * c
     return 0;
 }
 
-static void process_include(const char *line, const size_t line_len, FILE *out, const defines *defs,
-                            const char * const *include_paths)
+static void handle_ifdef(const char *line, const size_t line_len, parse_state *state)
+{
+    token_state s = {};
+    get_token(line, line_len, &s);
+    state->if_level++;
+    if (!state->mask_level && !defines_get(state->defs, s.tok)) {
+        state->mask_level = state->if_level;
+    }
+}
+
+static void handle_endif(parse_state *state)
+{
+    if (state->if_level == state->mask_level) {
+        state->mask_level = 0;
+    }
+    state->if_level--;
+    if (state->if_level < 0) {
+        die("#endif unmatched");
+    }
+}
+
+static void handle_include(const char *line, const size_t line_len, parse_state *state)
 {
     token_state s = {};
     char filename[256] = {};
@@ -72,17 +108,17 @@ static void process_include(const char *line, const size_t line_len, FILE *out, 
         return die("#define unrecognized filename %s", line);
     }
 
-    if (!resolve_include_path(filename, sizeof(filename), include_paths)) {
+    if (!resolve_include_path(filename, sizeof(filename), state->include_paths)) {
         return die("file %s not found in include paths", filename);
     }
     FILE *in = fopen(filename, "r");
-    parse(in, out, defs, include_paths);
+    parse(in, state->out, state->defs, state->include_paths);
 }
 
 static int line_continues(const char *line)
 {
     const char *last_bs = strrchr(line, '\\');
-    return last_bs && *(last_bs+1 + strspn(last_bs+1, "\r\n")) == '\0';
+    return last_bs && *(last_bs + 1 + strspn(last_bs + 1, "\r\n")) == '\0';
 }
 
 static void strip_continue(char *line)
@@ -93,7 +129,7 @@ static void strip_continue(char *line)
     }
 }
 
-static void process_define(const char *line, const size_t line_len, FILE *in, const defines *defs)
+static void handle_define(const char *line, const size_t line_len, FILE *in, parse_state *state)
 {
     char *name = NULL;
     char *args = NULL;
@@ -134,14 +170,13 @@ static void process_define(const char *line, const size_t line_len, FILE *in, co
         replace[strlen(replace)-1] = '\0';
     }
 
-    defines_add(defs, name, args, replace);
+    defines_add(state->defs, name, args, replace);
     free(name);
     free(args);
     free(replace);
 }
 
-static void process_directive(const char *line, const size_t line_len, FILE *in, FILE *out, const defines *defs,
-                              const char * const *include_paths)
+static void process_directive(const char *line, const size_t line_len, FILE *in, parse_state *state)
 {
     char cmd[64];
     const char *w = line + 1;
@@ -151,30 +186,38 @@ static void process_directive(const char *line, const size_t line_len, FILE *in,
     w += len;
     w += strspn(w, " \t");
 
-    if (strcmp(cmd, "include") == 0) {
-        process_include(w, strlen(w), out, defs, include_paths);
+    if (strcmp(cmd, "ifdef") == 0) {
+        handle_ifdef(w, strlen(w), state);
+    } else if (strcmp(cmd, "endif") == 0) {
+        handle_endif(state);
+    } else if (strcmp(cmd, "include") == 0) {
+        if (!state->mask_level) {
+            handle_include(w, strlen(w), state);
+        }
     } else if (strcmp(cmd, "define") == 0) {
-        process_define(w, strlen(w), in, defs);
-    } else {
+        if (!state->mask_level) {
+            handle_define(w, strlen(w), in, state);
+        }
+    } else if (!state->mask_level) {
         fprintf(stderr, "Warning: unrecognized directive %s\n", cmd);
     }
 }
 
-static void process_tokens(const char *line, const size_t line_len, FILE *out, const defines *defs)
+static void process_tokens(const char *line, const size_t line_len, parse_state *state)
 {
     token_state s = {};
     int eol = 0;
     while (!eol) {
         eol = get_token(line, line_len, &s);
-        const def *d = defines_get(defs, s.tok);
+        const def *d = defines_get(state->defs, s.tok);
         if (d) {
             // todo handle macros
             int i = 0;
             while (d->replace && d->replace[i]) {
-                fprintf(out, "%s", d->replace[i++]);
+                fprintf(state->out, "%s", d->replace[i++]);
             }
         } else {
-            fprintf(out, "%s", s.tok);
+            fprintf(state->out, "%s", s.tok);
         }
     }
 }

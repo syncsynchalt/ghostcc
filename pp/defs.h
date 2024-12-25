@@ -1,5 +1,4 @@
-#ifndef INC_DEFS_H
-#define INC_DEFS_H
+#pragma once
 
 #include "hashmap.h"
 
@@ -17,5 +16,3 @@ extern defines *defines_init(void);
 extern void defines_destroy(defines *defs);
 extern void defines_add(const defines *defs, const char *name, const char *args, const char *replace);
 extern const def *defines_get(const defines *defs, const char *name);
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef INC_HASHMAP_H
-#define INC_HASHMAP_H
+#pragma once
 
 #include <stdlib.h>
 
@@ -26,5 +25,3 @@ extern const void *hashmap_add(const hashmap *h, const char *key, const void *da
 extern const void *hashmap_get(const hashmap *h, const char *key);
 extern const void *hashmap_delete(const hashmap *h, const char *key);
 extern hashmap_entry *hashmap_iter(const hashmap *h, hashmap_iter_state *iter);
-
-#endif
