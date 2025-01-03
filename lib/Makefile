@@ -12,5 +12,5 @@ test:
 	$(MAKE) -C tests
 
 clean:
-	rm -f $(OBJ) ghostpp
+	rm -f *.o ghostpp
 	$(MAKE) -C tests $@

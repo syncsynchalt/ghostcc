@@ -6,6 +6,8 @@
 #include "common.h"
 #include "die.h"
 #include "lex.h"
+#include "ast.h"
+#include "pp_ast.h"
 
 typedef struct {
     int if_level;
@@ -62,6 +64,41 @@ static int resolve_include_path(char *filename, const size_t len, const char * c
     return 0;
 }
 
+static int line_continues(const char *line)
+{
+    const char *last_bs = strrchr(line, '\\');
+    return last_bs && *(last_bs + 1 + strspn(last_bs + 1, "\r\n")) == '\0';
+}
+
+static void strip_continue(char *line)
+{
+    char *last_bs = strrchr(line, '\\');
+    if (last_bs) {
+        *last_bs = '\0';
+    }
+}
+
+static char *read_full_line(const char *line, FILE *in)
+{
+    char *result;
+    result = strdup(line);
+    while (line_continues(result)) {
+        strip_continue(result);
+        char *l = NULL;
+        size_t ll = 0;
+        if (getline(&l, &ll, in) < 0) {
+            break;
+        }
+        result = realloc(result, strlen(result) + strlen(l) + 1);
+        strcat(result, l);
+        free(l);
+    }
+    while (strlen(result) && result[strlen(result)-1] == '\r' || result[strlen(result)-1] == '\n') {
+        result[strlen(result)-1] = '\0';
+    }
+    return result;
+}
+
 static void handle_ifdef(const char *line, const size_t line_len, parse_state *state)
 {
     token_state s = {};
@@ -70,6 +107,33 @@ static void handle_ifdef(const char *line, const size_t line_len, parse_state *s
     if (!state->mask_level && !defines_get(state->defs, s.tok)) {
         state->mask_level = state->if_level;
     }
+}
+
+static void handle_if(const char *line, FILE *in, parse_state *state)
+{
+    state->if_level++;
+    char *condition = read_full_line(line, in);
+    if (!state->mask_level) {
+        ast_node *node = pp_parse(condition);
+        ast_result pp_result = pp_resolve_ast(node);
+        int truth = 0;
+        switch (pp_result.type) {
+        case AST_RESULT_TYPE_INT:
+        default:
+            truth = !!pp_result.ival;
+            break;
+        case AST_RESULT_TYPE_FLT:
+            truth = !!pp_result.fval;
+            break;
+        case AST_RESULT_TYPE_STR:
+            truth = !!strlen(pp_result.sval);
+            break;
+        }
+        if (!truth) {
+            state->mask_level = state->if_level;
+        }
+    }
+
 }
 
 static void handle_endif(parse_state *state)
@@ -93,10 +157,10 @@ static void handle_include(const char *line, const size_t line_len, parse_state 
         if (!decode_str(s.tok, filename, sizeof(filename))) {
             die("Unable to decode filename %s", s.tok);
         }
-    } else if (s.type == TOK_LT) {
+    } else if (s.type == '<') {
         for (;;) {
             const int eol = get_token(line, line_len, &s);
-            if (s.type == TOK_GT) {
+            if (s.type == '>') {
                 break;
             }
             snprintf(filename + strlen(filename), sizeof(filename) - strlen(filename), "%s", s.tok);
@@ -115,20 +179,6 @@ static void handle_include(const char *line, const size_t line_len, parse_state 
     parse(in, state->out, state->defs, state->include_paths);
 }
 
-static int line_continues(const char *line)
-{
-    const char *last_bs = strrchr(line, '\\');
-    return last_bs && *(last_bs + 1 + strspn(last_bs + 1, "\r\n")) == '\0';
-}
-
-static void strip_continue(char *line)
-{
-    char *last_bs = strrchr(line, '\\');
-    if (last_bs) {
-        *last_bs = '\0';
-    }
-}
-
 static void handle_define(const char *line, const size_t line_len, FILE *in, parse_state *state)
 {
     char *name = NULL;
@@ -137,7 +187,7 @@ static void handle_define(const char *line, const size_t line_len, FILE *in, par
 
     token_state s = {};
     get_token(line, line_len, &s);
-    if (s.type != TOK_ID && s.type != TOK_KEYWORD) {
+    if (s.type != TOK_ID && !IS_KEYWORD(s.type)) {
         return die("#define must be an identifier: %s", line);
     }
     name = strdup(s.tok);
@@ -154,26 +204,12 @@ static void handle_define(const char *line, const size_t line_len, FILE *in, par
     const int len = strspn(p, " \t");
     p += len;
 
-    replace = strdup(p);
-    while (line_continues(replace)) {
-        strip_continue(replace);
-        char *l = NULL;
-        size_t ll = 0;
-        if (getline(&l, &ll, in) < 0) {
-            break;
-        }
-        replace = realloc(replace, strlen(replace) + strlen(l) + 1);
-        strcat(replace, l);
-        free(l);
-    }
-    while (strlen(replace) && replace[strlen(replace)-1] == '\r' || replace[strlen(replace)-1] == '\n') {
-        replace[strlen(replace)-1] = '\0';
-    }
+    char *full_line = read_full_line(p, in);
 
-    defines_add(state->defs, name, args, replace);
+    defines_add(state->defs, name, args,full_line);
     free(name);
     free(args);
-    free(replace);
+    free(full_line);
 }
 
 static void process_directive(const char *line, const size_t line_len, FILE *in, parse_state *state)
@@ -198,6 +234,8 @@ static void process_directive(const char *line, const size_t line_len, FILE *in,
         if (!state->mask_level) {
             handle_define(w, strlen(w), in, state);
         }
+    } else if (strcmp(cmd, "if") == 0) {
+        handle_if(w, in, state);
     } else if (!state->mask_level) {
         fprintf(stderr, "Warning: unrecognized directive %s\n", cmd);
     }

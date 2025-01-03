@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 
 #include "lex.h"
 #include "common.h"
@@ -11,26 +10,24 @@ static token_type tok_start[128] = {
     TOK_ERR, TOK_WS,  TOK_WS,  TOK_WS,  TOK_ERR, TOK_WS,  TOK_ERR, TOK_ERR,
     TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR,
     TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR,
-    TOK_WS, TOK_BANG, TOK_STR, TOK_PP_STR, TOK_ERR, TOK_MOD, TOK_AND, TOK_CHA,
-    TOK_LPAREN, TOK_RPAREN, TOK_MULT, TOK_PLUS, TOK_COMMA, TOK_MINUS, TOK_DOT, TOK_DIV,
+    TOK_WS,  '!',     TOK_STR, TOK_PP_STR, TOK_ERR, '%',  '&',     TOK_CHA,
+    '(',     ')',     '*',     '+',     ',',     '-',     '.',     '/',
     TOK_NUM, TOK_NUM, TOK_NUM, TOK_NUM, TOK_NUM, TOK_NUM, TOK_NUM, TOK_NUM,
-    TOK_NUM, TOK_NUM, TOK_COLON, TOK_SEMI, TOK_LT, TOK_ASSIGN, TOK_GT, TOK_QUESTION,
+    TOK_NUM, TOK_NUM, ':',     ';',     '<',     '=',     '>',     '?',
     TOK_ERR, TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,
     TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,
     TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,
-    TOK_ID,  TOK_ID,  TOK_ID,  TOK_LBRACK, TOK_PP_CONTINUE, TOK_RBRACK, TOK_XOR, TOK_ID,
+    TOK_ID,  TOK_ID,  TOK_ID,  '[', TOK_PP_CONTINUE, ']', '^',     TOK_ID,
     TOK_ERR, TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,
     TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,
     TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,  TOK_ID,
-    TOK_ID,  TOK_ID,  TOK_ID,  TOK_LBRACE, TOK_OR, TOK_RBRACE, TOK_BIT_FLIP, TOK_ERR,
+    TOK_ID,  TOK_ID,  TOK_ID,  '{',     '|',     '}',     '~',     TOK_ERR,
 };
 
 static char *keywords[] = {
-    "auto", "double", "int", "struct", "break", "else", "long", "switch",
-    "case", "enum", "register", "typedef", "char", "extern", "return",
-    "union", "const", "float", "short", "unsigned", "continue", "for",
-    "signed", "void", "default", "goto", "sizeof", "volatile", "do",
-    "if", "static", "while", NULL
+    "auto", "break", "case", "char", "const", "continue", "default", "do", "double", "else", "enum",
+    "extern", "float", "for", "goto", "if", "int", "long", "register", "return", "short", "signed",
+    "sizeof", "static", "struct", "switch", "typedef", "union", "unsigned", "void", "volatile", "while", NULL
 };
 
 static int copy_token(token_state *token, token_type type, size_t len)
@@ -126,7 +123,7 @@ int get_token(const char *line, const size_t line_len, token_state *token)
         return eat_err(line, line_len, token);
     }
 
-    switch ((type = tok_start[line[token->ind]])) {
+    switch ((int)(type = tok_start[line[token->ind]])) {
     case TOK_ERR:
         // unrecognized symbol
         return eat_err(line, line_len, token);
@@ -141,21 +138,17 @@ int get_token(const char *line, const size_t line_len, token_state *token)
         len = strspn(p, UPPER LOWER NUMERIC "_");
         line_done = copy_token(token, TOK_ID, len);
         for (i = 0; keywords[i]; i++) {
-            // keywords such as "auto", "continue", "return"
+            // keywords such as "auto", "continue", "return", ...
             if (strcmp(token->tok, keywords[i]) == 0) {
-                token->type = TOK_KEYWORD;
+                token->type = 600 + i;
             }
         }
         return line_done;
 
-    case TOK_LPAREN: case TOK_RPAREN:
-    case TOK_LBRACK: case TOK_RBRACK:
-    case TOK_LBRACE: case TOK_RBRACE:
-    case TOK_COMMA: case TOK_BIT_FLIP:
-    case TOK_COLON: case TOK_SEMI:
-    case TOK_QUESTION:
+    case '(': case ')': case '[': case ']':
+    case '{': case '}': case ',': case '~':
+    case ':': case ';': case '?':
         // single-character token
-        // "(", ")", "{", ";", "?", ":", ...
         copy_token(token, type, 1);
         line_done = token->ind >= line_len;
         return line_done;
@@ -225,91 +218,91 @@ int get_token(const char *line, const size_t line_len, token_state *token)
         }
         return copy_token(token, TOK_PP_CONTINUE, line_len - token->ind);
 
-    case TOK_PLUS:
+    case '+':
         if (p[1] == '+') {
             // ++
-            return copy_token(token, TOK_PLUSPLUS, 2);
+            return copy_token(token, TOK_INC_OP, 2);
         }
         if (p[1] == '=') {
             // +=
-            return copy_token(token, TOK_ASSIGN_PLUS, 2);
+            return copy_token(token, TOK_ADD_ASSIGN, 2);
         }
         // +
-        return copy_token(token, TOK_PLUS, 1);
+        return copy_token(token, '+', 1);
 
-    case TOK_MINUS:
+    case '-':
         if (p[1] == '-') {
             // --
-            return copy_token(token, TOK_MINUSMINUS, 2);
+            return copy_token(token, TOK_DEC_OP, 2);
         }
         if (p[1] == '>') {
             // ->
-            return copy_token(token, TOK_ARROW, 2);
+            return copy_token(token, TOK_PTR_OP, 2);
         }
         if (p[1] == '=') {
             // -=
-            return copy_token(token, TOK_ASSIGN_MINUS, 2);
+            return copy_token(token, TOK_SUB_ASSIGN, 2);
         }
         // -
-        return copy_token(token, TOK_MINUS, 1);
+        return copy_token(token, '-', 1);
 
-    case TOK_BANG:
+    case '!':
         if (p[1] == '=') {
             // !=
-            return copy_token(token, TOK_NE, 2);
+            return copy_token(token, TOK_NE_OP, 2);
         }
         // !
-        return copy_token(token, TOK_BANG, 1);
+        return copy_token(token, '!', 1);
 
-    case TOK_AND:
+    case '&':
         if (p[1] == '&') {
             // &&
-            return copy_token(token, TOK_LOGICAL_AND, 2);
+            return copy_token(token, TOK_AND_OP, 2);
         }
         if (p[1] == '=') {
             // &=
-            return copy_token(token, TOK_ASSIGN_AND, 2);
+            return copy_token(token, TOK_AND_ASSIGN, 2);
         }
         // &
-        return copy_token(token, TOK_AND, 1);
+        return copy_token(token, '&', 1);
 
-    case TOK_OR:
+    case '|':
         if (p[1] == '|') {
             // ||
-            return copy_token(token, TOK_LOGICAL_OR, 2);
+            return copy_token(token, TOK_OR_OP, 2);
         }
         if (p[1] == '=') {
             // |=
-            return copy_token(token, TOK_ASSIGN_OR, 2);
+            return copy_token(token, TOK_OR_ASSIGN, 2);
         }
         // |
-        return copy_token(token, TOK_OR, 1);
+        return copy_token(token, '|', 1);
 
-    case TOK_MOD:
+    case '%':
         if (p[1] == '=') {
             // %=
-            return copy_token(token, TOK_ASSIGN_MOD, 2);
+            return copy_token(token, TOK_MOD_ASSIGN, 2);
         }
         // %
-        return copy_token(token, TOK_MOD, 1);
+        return copy_token(token, '%', 1);
 
-    case TOK_XOR:
+    case '^':
         if (p[1] == '=') {
             // ^=
-            return copy_token(token, TOK_ASSIGN_XOR, 2);
+            return copy_token(token, TOK_XOR_ASSIGN, 2);
         }
         // ^
-        return copy_token(token, TOK_XOR, 1);
+        return copy_token(token, '^', 1);
 
-    case TOK_MULT:
+    case '*':
         if (p[1] == '=') {
             // *=
-            return copy_token(token, TOK_ASSIGN_MULT, 2);
+            return copy_token(token, TOK_MUL_ASSIGN, 2);
         }
         // *
-        return copy_token(token, TOK_MULT, 1);
+        return copy_token(token, '*', 1);
 
-    case TOK_DIV:
+    case '/':
         if (p[1] == '*') {
             token->_comment_level++;
             token->ind += 2;
@@ -320,58 +313,58 @@ int get_token(const char *line, const size_t line_len, token_state *token)
         }
         if (p[1] == '=') {
             // /=
-            return copy_token(token, TOK_ASSIGN_DIV, 2);
+            return copy_token(token, TOK_DIV_ASSIGN, 2);
         }
         // /
-        return copy_token(token, TOK_DIV, 1);
+        return copy_token(token, '/', 1);
 
-    case TOK_LT:
+    case '<':
         if (p[1] == '<') {
             if (p[2] == '=') {
                 // <<=
-                return copy_token(token, TOK_ASSIGN_LSHIFT, 3);
+                return copy_token(token, TOK_LEFT_ASSIGN, 3);
             }
             // <<
-            return copy_token(token, TOK_LSHIFT, 2);
+            return copy_token(token, TOK_LEFT_OP, 2);
         }
         if (p[1] == '=') {
             // <=
-            return copy_token(token, TOK_LE, 2);
+            return copy_token(token, TOK_LE_OP, 2);
         }
         // <
-        return copy_token(token, TOK_LT, 1);
+        return copy_token(token, '<', 1);
 
-    case TOK_GT:
+    case '>':
         if (p[1] == '>') {
             if (p[2] == '=') {
                 // >>=
-                return copy_token(token, TOK_ASSIGN_RSHIFT, 3);
+                return copy_token(token, TOK_RIGHT_ASSIGN, 3);
             }
             // >>
-            return copy_token(token, TOK_RSHIFT, 2);
+            return copy_token(token, TOK_RIGHT_OP, 2);
         }
         if (p[1] == '=') {
             // >=
-            return copy_token(token, TOK_GE, 2);
+            return copy_token(token, TOK_GE_OP, 2);
         }
         // >
-        return copy_token(token, TOK_GT, 1);
+        return copy_token(token, '>', 1);
 
-    case TOK_ASSIGN:
+    case '=':
         if (p[1] == '=') {
             // ==
-            return copy_token(token, TOK_EQ, 2);
+            return copy_token(token, TOK_EQ_OP, 2);
         }
         // =
-        return copy_token(token, TOK_ASSIGN, 1);
+        return copy_token(token, '=', 1);
 
-    case TOK_DOT:
+    case '.':
             if (p[1] == '.' && p[2] == '.') {
                 // ...
-                return copy_token(token, TOK_DOTDOTDOT, 3);
+                return copy_token(token, TOK_ELLIPSIS, 3);
             }
         // .
-        return copy_token(token, TOK_DOT, 1);
+        return copy_token(token, '.', 1);
 
     default:
         return die_at(token, token->ind, "unmapped character");

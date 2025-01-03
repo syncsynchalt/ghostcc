@@ -3,5 +3,7 @@
 test-asm/prog-*
 pp/ghostpp
 */tests/tests
+y.tab.c
+y.tab.h
 
 .idea

@@ -46,12 +46,12 @@ static char **parse_args(const char *name, const char *args)
         const int eol = get_token(args, len, &s);
         if (s.type == TOK_WS) {
             // ignore
-        } else if (s.type == TOK_COMMA) {
+        } else if (s.type == ',') {
             if (comma_counter % 2 != 1) {
                 die("#define %s args extra comma in %s", name, args);
             }
             comma_counter++;
-        } else if (s.type == TOK_ID || s.type == TOK_KEYWORD) {
+        } else if (s.type == TOK_ID || IS_KEYWORD(s.type)) {
             if (comma_counter % 2 != 0) {
                 die("#define %s args missing comma in %s", name, args);
             }

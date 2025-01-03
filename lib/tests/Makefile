@@ -15,4 +15,4 @@ run: tests
 	./tests
 
 clean:
-	rm -f $(OBJ) tests
+	rm -f *.o tests
