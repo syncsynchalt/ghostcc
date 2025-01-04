@@ -8,7 +8,7 @@ static void assert_token(const int line, const char *l, token_state &s, const in
                          const bool eol = false, const int pos = -1)
 {
     const std::string at = "(at " __FILE__ ":" + std::to_string(line) + ")";
-    ASSERT_EQ(eol ? 1 : 0, get_token(l, strlen(l), &s)) << at;
+    ASSERT_EQ(eol ? 0 : 1, get_token(l, strlen(l), &s)) << at;
     ASSERT_EQ(type, s.type) << at;
     ASSERT_EQ(token, s.tok) << at;
     if (pos >= 0) {

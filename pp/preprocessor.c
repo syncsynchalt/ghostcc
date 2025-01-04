@@ -164,12 +164,12 @@ static void handle_include(const char *line, const size_t line_len, parse_state 
         }
     } else if (s.type == '<') {
         for (;;) {
-            const int eol = get_token(line, line_len, &s);
+            const int cont = get_token(line, line_len, &s);
             if (s.type == '>') {
                 break;
             }
             snprintf(filename + strlen(filename), sizeof(filename) - strlen(filename), "%s", s.tok);
-            if (eol) {
+            if (!cont) {
                 return die("#define unterminated filename %s", line);
             }
         }
@@ -270,9 +270,9 @@ static void process_directive(const char *line, const size_t line_len, FILE *in,
 static void process_tokens(const char *line, const size_t line_len, const parse_state *state)
 {
     token_state s = {};
-    int eol = 0;
-    while (!eol) {
-        eol = get_token(line, line_len, &s);
+    int cont = 1;
+    while (cont) {
+        cont = get_token(line, line_len, &s);
         const def *d = defines_get(state->defs, s.tok);
         if (d) {
             if (d->args) {

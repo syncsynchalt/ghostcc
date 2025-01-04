@@ -30,7 +30,7 @@ static char *keywords[] = {
     "sizeof", "static", "struct", "switch", "typedef", "union", "unsigned", "void", "volatile", "while", NULL
 };
 
-static int copy_token(token_state *token, token_type type, size_t len)
+static int copy_token(token_state *token, const token_type type, size_t len)
 {
     if (len+1 > token->_tok_max) {
         token->_tok_max = len + 1;
@@ -45,7 +45,7 @@ static int copy_token(token_state *token, token_type type, size_t len)
     token->type = type;
     token->pos = token->ind;
     token->ind += len;
-    return token->ind >= token->_line_len;
+    return token->ind < token->_line_len;
 }
 
 static int die_at(const token_state *token, const size_t ind, const char *msg)
@@ -87,7 +87,7 @@ static int eat_comment(token_state *token)
             if (!token->_comment_level) {
                 copy_token(token, TOK_COMMENT, 1);
                 token->ind = i + 2;
-                return token->ind >= token->_line_len;
+                return token->ind < token->_line_len;
             }
         } else if (token->_line[i] == '/' && token->_line[i+1] == '*') {
             token->_comment_level++;
@@ -96,7 +96,7 @@ static int eat_comment(token_state *token)
     }
     copy_token(token, TOK_COMMENT, 1);
     token->ind = token->_line_len;
-    return 1; // end of line
+    return 0; // end of line
 }
 
 int get_token(const char *line, const size_t line_len, token_state *token)
@@ -116,7 +116,7 @@ int get_token(const char *line, const size_t line_len, token_state *token)
     }
 
     const char *p = token->_line + token->ind;
-    int line_done;
+    int line_cont;
 
     token_type type;
     if ((unsigned char)token->_line[token->ind] > 127) {
@@ -136,22 +136,22 @@ int get_token(const char *line, const size_t line_len, token_state *token)
     case TOK_ID:
         // identifier (variable name, argument name, function name, ...)
         len = strspn(p, UPPER LOWER NUMERIC "_");
-        line_done = copy_token(token, TOK_ID, len);
+        line_cont = copy_token(token, TOK_ID, len);
         for (i = 0; keywords[i]; i++) {
             // keywords such as "auto", "continue", "return", ...
             if (strcmp(token->tok, keywords[i]) == 0) {
                 token->type = 600 + i;
             }
         }
-        return line_done;
+        return line_cont;
 
     case '(': case ')': case '[': case ']':
     case '{': case '}': case ',': case '~':
     case ':': case ';': case '?':
         // single-character token
         copy_token(token, type, 1);
-        line_done = token->ind >= token->_line_len;
-        return line_done;
+        line_cont = token->ind < token->_line_len;
+        return line_cont;
 
     case TOK_NUM:
         // numeric constant

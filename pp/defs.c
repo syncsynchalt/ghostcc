@@ -43,7 +43,7 @@ static char **parse_args(const char *name, const char *args)
 
     const size_t len = strlen(args);
     for (;;) {
-        const int eol = get_token(args, len, &s);
+        const int cont = get_token(args, len, &s);
         if (s.type == TOK_WS) {
             // ignore
         } else if (s.type == ',') {
@@ -63,7 +63,7 @@ static char **parse_args(const char *name, const char *args)
         } else {
             die("#define %s(%s) bad arg %s", name, args, s.tok);
         }
-        if (eol) {
+        if (!cont) {
             break;
         }
     }
@@ -85,12 +85,12 @@ static char **parse_replace(const char *replace)
 
     const size_t len = strlen(replace);
     for (;;) {
-        const int eol = get_token(replace, len, &s);
+        const int cont = get_token(replace, len, &s);
         if (n % 5 == 0) {
             result = realloc(result, sizeof(*result) * (n + 6));
         }
         result[n++] = strdup(s.tok);
-        if (eol) {
+        if (!cont) {
             break;
         }
     }
