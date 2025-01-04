@@ -1,9 +1,10 @@
 #include <string.h>
+#include <stdio.h>
 #include "pp_lex.h"
 #include "lex.h"
-#include <stdio.h>
+#include "die.h"
 
-static token_state s;
+static token_state s_;
 char *pp_parse_target;
 defines const *pp_parse_defs;
 size_t pp_parse_target_len;
@@ -16,7 +17,7 @@ size_t scratch_len;
 
 void reset_parser(void)
 {
-    memset(&s, 0, sizeof(s));
+    memset(&s_, 0, sizeof(s_));
     pp_parse_target = NULL;
     pp_parse_target_len = 0;
     scratch = NULL;
@@ -31,6 +32,43 @@ static void add_to_scratch(const char *w, size_t *ind)
     }
     strcpy(scratch + *ind, w);
     *ind += strlen(w);
+}
+
+void handle_defined(token_state *ts, size_t *scratch_ind)
+{
+    int found_parens = 0;
+
+    while (ts->ind < pp_parse_target_len) {
+        get_token(pp_parse_target, strlen(pp_parse_target), ts);
+        if (ts->type == TOK_WS) {
+            continue;
+        }
+        if (ts->type == '(') {
+            found_parens = 1;
+            continue;
+        }
+        const int found = defines_get(pp_parse_defs, ts->tok) != NULL;
+        add_to_scratch(found ? "1" : "0", scratch_ind);
+        break;
+    }
+
+    while (found_parens && ts->ind < pp_parse_target_len) {
+        get_token(pp_parse_target, strlen(pp_parse_target), ts);
+        if (ts->type == TOK_WS) {
+            continue;
+        }
+        if (ts->type == ')') {
+            found_parens = 0;
+            continue;
+        }
+        break;
+    }
+
+    if (found_parens) {
+        die("Unexpected %s while looking for closing parens on line: %s",
+            ts->ind < pp_parse_target_len ? ts->tok : "end-of-line", ts->_line);
+        exit(1);
+    }
 }
 
 void subst_tokens(void)
@@ -55,6 +93,9 @@ void subst_tokens(void)
             while (d->replace && d->replace[i]) {
                 add_to_scratch(d->replace[i++], &ind);
             }
+        } else if (strcmp(ts.tok, "defined") == 0) {
+            // special case: handle the `defined(SYMBOL)` pseudo-macro
+            handle_defined(&ts, &ind);
         } else {
             add_to_scratch(ts.tok, &ind);
         }
@@ -68,15 +109,15 @@ int yylex(void)
         subst_tokens();
     }
     do {
-        if (s.ind >= scratch_len) {
+        if (s_.ind >= scratch_len) {
             yylval = NULL;
             return -1;
         }
-        get_token(scratch, scratch_len, &s);
-    } while (s.type == TOK_WS);
+        get_token(scratch, scratch_len, &s_);
+    } while (s_.type == TOK_WS);
 
-    pp_parse_line = s._line;
-    pp_parse_line_index = s.pos;
-    yylval = make_ast_node(&s, NULL, NULL);
-    return s.type;
+    pp_parse_line = s_._line;
+    pp_parse_line_index = s_.pos;
+    yylval = make_ast_node(&s_, NULL, NULL);
+    return s_.type;
 }

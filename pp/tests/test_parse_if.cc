@@ -56,3 +56,22 @@ TEST(IfTest, Macros)
 )");
     EXPECT_EQ("\n fred\n", output);
 }
+
+TEST(IfTest, Defined)
+{
+    const auto output = run_parser(R"(
+#define FOO 123
+#define BAR
+#define BAZ
+#if defined FOO
+ foo
+#endif
+#if defined(BAR)
+ bar
+#endif
+#if defined ( FRED ) || ( defined ( BAZ ) && defined BAR)
+ fred or baz
+#endif
+)");
+    EXPECT_EQ("\n foo\n bar\n fred or baz\n", output);
+}
