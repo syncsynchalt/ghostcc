@@ -23,6 +23,7 @@ typedef struct {
  * @param token parsing state, allocated by caller and updated by get_token. Resets automatically every time `line`
  * changes.
  * @return 1 if end of line, else 0
+ * // todo - reverse the return of get_token
  */
 extern int get_token(const char *line, size_t line_len, token_state *token);
 

@@ -2,12 +2,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #include "ast.h"
 #include "common.h"
 #include "die.h"
 #include "lex.h"
 #include "pp_ast.h"
+#include "pp_macro.h"
 
 static void process_directive(const char *line, size_t line_len, FILE *in, parse_state *state);
 static void process_tokens(const char *line, size_t line_len, const parse_state *state);
@@ -196,15 +198,16 @@ static void handle_define(const char *line, const size_t line_len, FILE *in, con
 
     const char *p = line + s.ind;
     if (*p == '(') {
+        // todo handle parens in macro args
         const char *q = strchr(p, ')');
         if (!q) {
             return die("#define missing closing parens: %s", line);
         }
         args = malloc(q - p);
         strncpy(args, p + 1, q - p - 1);
+        p = q+1;
     }
-    const int len = strspn(p, " \t");
-    p += len;
+    p += strspn(p, " \t");
 
     char *full_line = read_full_line(p, in);
 
@@ -272,10 +275,18 @@ static void process_tokens(const char *line, const size_t line_len, const parse_
         eol = get_token(line, line_len, &s);
         const def *d = defines_get(state->defs, s.tok);
         if (d) {
-            // todo handle macros
-            int i = 0;
-            while (d->replace && d->replace[i]) {
-                fprintf(state->out, "%s", d->replace[i++]);
+            if (d->args) {
+                size_t ind = 0;
+                size_t sz = 128;
+                char *buf = calloc(1, sz);
+                handle_macro(d, &s, &buf, &ind, &sz);
+                fprintf(state->out, "%s", buf);
+                free(buf);
+            } else {
+                int i = 0;
+                while (d->replace && d->replace[i]) {
+                    fprintf(state->out, "%s", d->replace[i++]);
+                }
             }
         } else {
             fprintf(state->out, "%s", s.tok);

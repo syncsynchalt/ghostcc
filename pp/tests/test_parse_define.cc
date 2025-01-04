@@ -31,3 +31,31 @@ a to z
 )");
     EXPECT_EQ("\nx yz 1 2 3 to z\n", output);
 }
+
+TEST(DefinesTest, Macro)
+{
+    auto output = run_parser(R"(
+#define A(a, b, c)  a = b + c
+ foo A(1, 2, 3)
+)");
+    EXPECT_EQ("\n foo 1 = 2 + 3\n", output);
+
+    output = run_parser(R"(
+#define A(  a  ,b,  c)  a = b + c
+ foo A(   1  ,2, 3    )
+)");
+    EXPECT_EQ("\n foo 1 = 2 + 3\n", output);
+
+    EXPECT_DEATH({
+        run_parser(R"(
+#define A(a, b, c) a = b + c
+ foo A(1)
+)");
+    }, "Unexpected end of args in macro A.");
+    EXPECT_DEATH({
+    run_parser(R"(
+#define A(a, b, c) a = b + c
+ foo A(1, 2, 3, 4)
+)");
+    }, "Unexpected args past 3 in macro A.");
+}

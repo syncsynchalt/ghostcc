@@ -2,9 +2,11 @@
 #include <cassert>
 #include <fstream>
 #include <string>
+#include <sstream>
 extern "C" {
 #include "preprocessor.h"
 }
+using namespace std::string_literals;
 
 std::string write_file(const std::string &contents)
 {
@@ -60,11 +62,16 @@ std::string print_ast(const ast_node *node)
     } else if (node->node_type == NODE_FLT) {
         return std::to_string(node->fval);
     } else if (node->node_type == NODE_CHA) {
-        // todo - quote correctly
-        return std::string() + "'" + (char)node->cval + "'";
+        if (!isprint(node->cval)) {
+            return "'?'"s;
+        }
+        if (node->cval == '"' || node->cval == '\'') {
+            return "'\\"s + (char)node->cval + "'";
+        }
+        return "'"s + (char)node->cval + "'";
     } else if (node->node_type == NODE_STR) {
-        // todo - quote correctly
-        return std::string() + "\"" + node->s + "\"";
+        std::stringstream ss(node->s);
+        return ss.str();
     }
 
     result += "(";

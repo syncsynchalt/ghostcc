@@ -64,38 +64,38 @@ static int die_at(const token_state *token, const size_t ind, const char *msg)
     exit(1);
 }
 
-static int eat_err(const char *line, const size_t line_len, token_state *token)
+static int eat_err(token_state *token)
 {
     size_t i;
-    for (i = token->ind; i < line_len - 1; i++) {
-        if (!line[i]) {
+    for (i = token->ind; i < token->_line_len - 1; i++) {
+        if (!token->_line[i]) {
             break;
         }
-        if ((unsigned char)line[i] < 0x7f && tok_start[line[i]] != TOK_ERR) {
+        if ((unsigned char)token->_line[i] < 0x7f && tok_start[token->_line[i]] != TOK_ERR) {
             break;
         }
     }
     return copy_token(token, TOK_ERR, i - token->ind);
 }
 
-static int eat_comment(const char *line, const size_t line_len, token_state *token)
+static int eat_comment(token_state *token)
 {
     size_t i;
-    for (i = token->ind; i < line_len - 1; i++) {
-        if (line[i] == '*' && line[i+1] == '/') {
+    for (i = token->ind; i < token->_line_len - 1; i++) {
+        if (token->_line[i] == '*' && token->_line[i+1] == '/') {
             token->_comment_level--;
             if (!token->_comment_level) {
                 copy_token(token, TOK_COMMENT, 1);
                 token->ind = i + 2;
-                return token->ind >= line_len;
+                return token->ind >= token->_line_len;
             }
-        } else if (line[i] == '/' && line[i+1] == '*') {
+        } else if (token->_line[i] == '/' && token->_line[i+1] == '*') {
             token->_comment_level++;
             i += 2;
         }
     }
     copy_token(token, TOK_COMMENT, 1);
-    token->ind = line_len;
+    token->ind = token->_line_len;
     return 1; // end of line
 }
 
@@ -104,7 +104,7 @@ int get_token(const char *line, const size_t line_len, token_state *token)
     int len;
     size_t i;
 
-    if (token->_line != line) {
+    if (line && token->_line != line) {
         // reset for new line
         token->_line = line;
         token->_line_len = line_len;
@@ -112,25 +112,25 @@ int get_token(const char *line, const size_t line_len, token_state *token)
     }
 
     if (token->_comment_level) {
-        return eat_comment(line, line_len, token);
+        return eat_comment(token);
     }
 
-    const char *p = line + token->ind;
+    const char *p = token->_line + token->ind;
     int line_done;
 
     token_type type;
-    if ((unsigned char)line[token->ind] > 127) {
-        return eat_err(line, line_len, token);
+    if ((unsigned char)token->_line[token->ind] > 127) {
+        return eat_err(token);
     }
 
-    switch ((int)(type = tok_start[line[token->ind]])) {
+    switch ((int)(type = tok_start[token->_line[token->ind]])) {
     case TOK_ERR:
         // unrecognized symbol
-        return eat_err(line, line_len, token);
+        return eat_err(token);
 
     case TOK_WS:
         // whitespace
-        len = strspn(line + token->ind, WHITESPACE);
+        len = strspn(token->_line + token->ind, WHITESPACE);
         return copy_token(token, TOK_WS, len);
 
     case TOK_ID:
@@ -150,7 +150,7 @@ int get_token(const char *line, const size_t line_len, token_state *token)
     case ':': case ';': case '?':
         // single-character token
         copy_token(token, type, 1);
-        line_done = token->ind >= line_len;
+        line_done = token->ind >= token->_line_len;
         return line_done;
 
     case TOK_NUM:
@@ -185,9 +185,9 @@ int get_token(const char *line, const size_t line_len, token_state *token)
             p++;
         }
         if (*p != '"') {
-            return die_at(token, p - (line + token->ind), "unterminated quote");
+            return die_at(token, p - (token->_line + token->ind), "unterminated quote");
         }
-        return copy_token(token, TOK_STR, p - (line + token->ind) + 1);
+        return copy_token(token, TOK_STR, p - (token->_line + token->ind) + 1);
 
     case TOK_CHA:
         // character constant: 'a', '\0', '\b', ...
@@ -197,7 +197,7 @@ int get_token(const char *line, const size_t line_len, token_state *token)
             len = 3;
         }
         if (*(p + len - 1) != '\'') {
-            return die_at(token, p - line, "unterminated character");
+            return die_at(token, p - token->_line, "unterminated character");
         }
         return copy_token(token, TOK_CHA, len);
 
@@ -213,10 +213,10 @@ int get_token(const char *line, const size_t line_len, token_state *token)
     case TOK_PP_CONTINUE:
         // preprocessor line continuation: ending a line with backslash
         len = strspn(p + 1, "\r\n");
-        if (token->ind + 1 + len != line_len) {
+        if (token->ind + 1 + len != token->_line_len) {
             return die_at(token, token->ind, "backslash (not at end of line)");
         }
-        return copy_token(token, TOK_PP_CONTINUE, line_len - token->ind);
+        return copy_token(token, TOK_PP_CONTINUE, token->_line_len - token->ind);
 
     case '+':
         if (p[1] == '+') {
@@ -306,10 +306,10 @@ int get_token(const char *line, const size_t line_len, token_state *token)
         if (p[1] == '*') {
             token->_comment_level++;
             token->ind += 2;
-            return eat_comment(line, line_len, token);
+            return eat_comment(token);
         }
         if (p[1] == '/') {
-            return copy_token(token, TOK_LINE_COMMENT, line_len - token->ind);
+            return copy_token(token, TOK_LINE_COMMENT, token->_line_len - token->ind);
         }
         if (p[1] == '=') {
             // /=

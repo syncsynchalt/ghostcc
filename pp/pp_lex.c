@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "pp_lex.h"
+#include "pp_macro.h"
 #include "lex.h"
 #include "die.h"
 
@@ -81,17 +82,20 @@ void subst_tokens(void)
     }
     pp_parse_target_len = strlen(pp_parse_target);
     scratch_len = 2 * pp_parse_target_len;
-    scratch = malloc(scratch_len + 1);
+    scratch = calloc(1, scratch_len + 1);
 
     size_t ind = 0;
     const def *d = NULL;
     while (ts.ind < pp_parse_target_len) {
         get_token(pp_parse_target, strlen(pp_parse_target), &ts);
         if ((d = defines_get(pp_parse_defs, ts.tok))) {
-            // todo handle macros
-            int i = 0;
-            while (d->replace && d->replace[i]) {
-                add_to_scratch(d->replace[i++], &ind);
+            if (d->args) {
+                handle_macro(d, &ts, &scratch, &ind, &scratch_len);
+            } else {
+                int i = 0;
+                while (d->replace && d->replace[i]) {
+                    add_to_scratch(d->replace[i++], &ind);
+                }
             }
         } else if (strcmp(ts.tok, "defined") == 0) {
             // special case: handle the `defined(SYMBOL)` pseudo-macro

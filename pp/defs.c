@@ -107,6 +107,10 @@ defines *defines_init(void)
     defs = calloc(1, sizeof *defs);
     defs->h = hashmap_init(1024);
 
+    // todo - implement
+    defines_add(defs, "__FILE__", NULL, "\"__filename__\"");
+    defines_add(defs, "__LINE__", NULL, "0");
+
     // initial defines from 'echo | clang -dM -E -'
 
     defines_add(defs, "_LP64", NULL, "1");
