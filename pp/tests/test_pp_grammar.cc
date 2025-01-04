@@ -81,3 +81,16 @@ TEST(GrammarParseTest, TestFltResolution)
     EXPECT_EQ(AST_RESULT_TYPE_INT, r.type);
     EXPECT_EQ(1, r.ival);
 }
+
+TEST(GrammarParseTest, TestStrResolution)
+{
+    auto r = pp_resolve_ast(parse(R"("foo" = "bar")"));
+    EXPECT_EQ(AST_RESULT_TYPE_INT, r.type);
+    EXPECT_EQ(0, r.ival);
+    r = pp_resolve_ast(parse(R"("foo" = "foo")"));
+    EXPECT_EQ(AST_RESULT_TYPE_INT, r.type);
+    EXPECT_EQ(1, r.ival);
+    r = pp_resolve_ast(parse(R"("foo" == "foo")"));
+    EXPECT_EQ(AST_RESULT_TYPE_INT, r.type);
+    EXPECT_EQ(1, r.ival);
+}

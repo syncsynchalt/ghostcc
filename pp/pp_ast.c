@@ -1,15 +1,17 @@
 #include <string.h>
-#include <stdio.h>
+#include <ctype.h>
+#include "preprocessor.h"
 #include "pp_ast.h"
 #include "pp_lex.h"
 #include "die.h"
 
 extern int yyparse();
 
-ast_node *pp_parse(const char *s)
+ast_node *pp_parse(const char *s, defines *defs)
 {
     reset_parser();
     pp_parse_target = (char *)s;
+    pp_parse_defs = defs;
     yyparse();
     return pp_parse_result;
 }
@@ -74,6 +76,9 @@ ast_result pp_resolve_ast(const ast_node *node)
         case '%':
             VR(V(r1) / V(r2))
             return r;
+        case '&':
+            r.ival = r1.ival & r2.ival;
+            return r;
         case TOK_RIGHT_OP:
             r.ival = r1.ival >> r2.ival;
             return r;
@@ -89,9 +94,9 @@ ast_result pp_resolve_ast(const ast_node *node)
         case TOK_EQ_OP:
         case '=':
             if (r1.type == AST_RESULT_TYPE_STR && r2.type == AST_RESULT_TYPE_STR) {
-                r1.ival = strcmp(r1.sval, r2.sval) == 0;
+                r.ival = strcmp(r1.sval, r2.sval) == 0;
             } else {
-                r1.ival = V(r1) == V(r2);
+                r.ival = V(r1) == V(r2);
             }
             return r;
         case ':':
@@ -108,7 +113,10 @@ ast_result pp_resolve_ast(const ast_node *node)
                 return pp_resolve_ast(r1.ival ? node->right->left : node->right->right);
             }
         default:
-            die("Didn't recognize token type %d (%c / %s)", node->token_type, node->token_type, node->s);
+            die("Didn't recognize token type %d (%c / %s)",
+                node->token_type,
+                isprint(node->token_type) ? node->token_type : '?',
+                node->s);
             exit(1);
     }
 }

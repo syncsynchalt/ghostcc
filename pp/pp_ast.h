@@ -1,7 +1,7 @@
 #pragma once
 #include "ast.h"
 
-extern ast_node *pp_parse(const char *s);
+extern ast_node *pp_parse(const char *s, defines *defs);
 
 #define AST_RESULT_TYPE_INT 0
 #define AST_RESULT_TYPE_FLT 1

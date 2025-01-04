@@ -522,7 +522,7 @@ defines *defines_init(void)
 
 const def *defines_get(const defines *defs, const char *name)
 {
-    return hashmap_get(defs->h, name);
+    return defs ? hashmap_get(defs->h, name) : NULL;
 }
 
 void defines_destroy(defines *defs)

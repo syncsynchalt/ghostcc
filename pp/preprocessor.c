@@ -12,7 +12,7 @@
 typedef struct {
     int if_level;
     int mask_level;
-    const defines *defs;
+    defines *defs;
     const char * const *include_paths;
     FILE *out;
 } parse_state;
@@ -22,7 +22,7 @@ static void process_tokens(const char *line, size_t line_len, parse_state *state
 
 // ReSharper disable CppParameterMayBeConstPtrOrRef
 
-void parse(FILE *in, FILE *out, const defines *defs, const char * const *include_paths)
+void parse(FILE *in, FILE *out, defines *defs, const char * const *include_paths)
 {
     char *line = NULL;
     size_t linecap;
@@ -112,10 +112,10 @@ static void handle_ifdef(const char *line, const size_t line_len, parse_state *s
 static void handle_if(const char *line, FILE *in, parse_state *state)
 {
     state->if_level++;
-    char *condition = read_full_line(line, in);
+    const char *condition = read_full_line(line, in);
     if (!state->mask_level) {
-        ast_node *node = pp_parse(condition);
-        ast_result pp_result = pp_resolve_ast(node);
+        const ast_node *node = pp_parse(condition, state->defs);
+        const ast_result pp_result = pp_resolve_ast(node);
         int truth = 0;
         switch (pp_result.type) {
         case AST_RESULT_TYPE_INT:
@@ -133,7 +133,15 @@ static void handle_if(const char *line, FILE *in, parse_state *state)
             state->mask_level = state->if_level;
         }
     }
+}
 
+static void handle_else(parse_state *state)
+{
+   if (state->mask_level && state->mask_level == state->if_level) {
+       state->mask_level = 0;
+   } else if (!state->mask_level) {
+       state->mask_level = state->if_level;
+   }
 }
 
 static void handle_endif(parse_state *state)
@@ -183,7 +191,6 @@ static void handle_define(const char *line, const size_t line_len, FILE *in, par
 {
     char *name = NULL;
     char *args = NULL;
-    char *replace = NULL;
 
     token_state s = {};
     get_token(line, line_len, &s);
@@ -236,6 +243,8 @@ static void process_directive(const char *line, const size_t line_len, FILE *in,
         }
     } else if (strcmp(cmd, "if") == 0) {
         handle_if(w, in, state);
+    } else if (strcmp(cmd, "else") == 0) {
+        handle_else(state);
     } else if (!state->mask_level) {
         fprintf(stderr, "Warning: unrecognized directive %s\n", cmd);
     }

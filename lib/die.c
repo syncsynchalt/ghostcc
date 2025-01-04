@@ -8,5 +8,6 @@ void die(const char *msg, ...)
     va_start(ap, msg);
     fprintf(stderr, "Fatal error: ");
     vfprintf(stderr, msg, ap);
+    fprintf(stderr, "\n");
     exit(1);
 }
