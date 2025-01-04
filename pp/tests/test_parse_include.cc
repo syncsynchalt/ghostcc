@@ -2,7 +2,7 @@
 #include <fstream>
 #include "helper.h"
 extern "C" {
-#include "parse.h"
+#include "preprocessor.h"
 }
 
 TEST(IncludesTest, Simple)

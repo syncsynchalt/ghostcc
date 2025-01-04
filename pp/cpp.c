@@ -2,7 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "defs.h"
-#include "parse.h"
+#include "preprocessor.h"
 
 static char *infile = NULL;
 static char *outfile = NULL;

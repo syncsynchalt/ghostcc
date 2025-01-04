@@ -3,7 +3,7 @@
 #include <fstream>
 #include <string>
 extern "C" {
-#include "parse.h"
+#include "preprocessor.h"
 }
 
 std::string write_file(const std::string &contents)
