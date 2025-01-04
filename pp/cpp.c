@@ -61,9 +61,12 @@ int main(const int argc, char **argv)
         exit(1);
     }
 
-    const defines *defs = defines_init();
+    defines *defs = defines_init();
 
-    parse(in, out, defs, include_paths);
+    parse_state state = {0};
+    state.defs = defs;
+    state.include_paths = include_paths;
+    parse(infile, in, out, &state);
     fclose(out);
     fclose(in);
 

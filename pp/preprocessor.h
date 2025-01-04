@@ -3,4 +3,14 @@
 #include <stdio.h>
 #include "defs.h"
 
-extern void parse(FILE *in, FILE *out, defines *defs, const char * const *include_paths);
+typedef struct {
+  int if_level;
+  int mask_level;
+  defines *defs;
+  const char * const *include_paths;
+  FILE *out;
+  const char *current_filename;
+  hashmap *once_filenames;
+} parse_state;
+
+extern void parse(const char *filename, FILE *in, FILE *out, parse_state *existing_state);

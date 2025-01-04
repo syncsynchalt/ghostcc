@@ -27,6 +27,7 @@ std::string read_file(const std::string &filename)
 std::string run_parser(const std::string &input, const std::string &extra_include_path)
 {
     const auto infile = write_file(input);
+    FileDeleter fd(infile);
     return run_parser_on_file(infile, extra_include_path);
 }
 
@@ -41,7 +42,10 @@ std::string run_parser_on_file(const std::string &filename, const std::string &e
     const auto outfile = write_file("");
     FILE *in = fopen(filename.c_str(), "r");
     FILE *out = fopen(outfile.c_str(), "w");
-    parse(in, out, defs, includes);
+    parse_state state = {0};
+    state.defs = defs;
+    state.include_paths = includes;
+    parse(filename.c_str(), in, out, &state);
     fclose(out);
     fclose(in);
     return read_file(outfile);
