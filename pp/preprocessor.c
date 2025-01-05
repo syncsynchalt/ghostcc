@@ -184,6 +184,24 @@ static void handle_include(const char *line, const size_t line_len, parse_state 
     parse(filename, in, state->out, state);
 }
 
+int span_parens(const char *p)
+{
+    int i = 0;
+    int parens_count = 0;
+    for (i = 0; p[i] != '\0'; i++) {
+        if (p[i] == '(') {
+            parens_count++;
+        }
+        if (p[i] == ')') {
+            parens_count--;
+            if (parens_count == 0) {
+                return i;
+            }
+        }
+    }
+    return i;
+}
+
 static void handle_define(const char *line, const size_t line_len, FILE *in, const parse_state *state)
 {
     char *name = NULL;
@@ -199,8 +217,8 @@ static void handle_define(const char *line, const size_t line_len, FILE *in, con
     const char *p = line + s.ind;
     if (*p == '(') {
         // todo handle parens in macro args
-        const char *q = strchr(p, ')');
-        if (!q) {
+        const char *q = p + span_parens(p);
+        if (*q != ')') {
             return die("#define missing closing parens: %s", line);
         }
         args = malloc(q - p);

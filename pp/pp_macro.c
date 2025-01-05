@@ -26,24 +26,18 @@ static int skip_ws(token_state *s)
 
 void handle_macro(const def *d, token_state *s, char **out, size_t *ind, size_t *sz)
 {
-    char *free_buf = NULL;
-    size_t free_buf_ind = 0;
-    size_t free_buf_sz = 0;
-    if (!out) {
-        // alloc our own work buffer
-        free_buf_sz = 128;
-        free_buf = malloc(free_buf_sz);
-        out = &free_buf;
-        ind = &free_buf_ind;
-        sz = &free_buf_sz;
-    }
+    char **extra_args = NULL;
+    int extra_args_num = 0;
 
     // make room for tracking replacement value of each arg
     int num_args;
     for (num_args = 0; d->args[num_args]; ++num_args) {}
     char **vals = malloc(num_args * sizeof(char *));
 
-    // todo - handle `...`
+    if (num_args && strcmp(d->args[num_args-1], "...") == 0) {
+        num_args--;
+        extra_args = calloc(1, (extra_args_num + 5) * sizeof(*extra_args));
+    }
 
     // assign replacement value of each arg
     skip_ws(s);
@@ -51,27 +45,46 @@ void handle_macro(const def *d, token_state *s, char **out, size_t *ind, size_t 
         die("Macro args for macro %s missing", d->name); exit(1);
     }
     skip_ws(s);
-    int i = 0;
-    for (i = 0; i < num_args; ++i) {
-        vals[i] = strdup(s->tok);
+    int arg = 0;
+    for (arg = 0; arg < num_args; ++arg) {
+        vals[arg] = strdup(s->tok);
         skip_ws(s);
         if (s->type != ',' && s->type != ')') {
-            die("Unexpected token %s in macro %s arg %d. line: %s", s->tok, d->name, i, s->_line); exit(1);
+            die("Unexpected token %s in macro %s arg %d. line: %s", s->tok, d->name, arg, s->_line); exit(1);
         }
-        if (s->type == ')' && i+1 != num_args) {
+        if (s->type == ')' && arg+1 != num_args) {
             die("Unexpected end of args in macro %s. line: %s", d->name, s->_line); exit(1);
         }
         if (s->type != ')') {
             skip_ws(s);
         }
     }
+
+    if (extra_args && s->type != ')') {
+        for (;;) {
+            if (extra_args_num && extra_args_num % 5 == 0) {
+                extra_args = realloc(extra_args, (extra_args_num + 5) * sizeof(*extra_args));
+            }
+            extra_args[extra_args_num++] = strdup(s->tok);
+            skip_ws(s);
+            if (s->type == ')' || s->ind >= s->_line_len) {
+                break;
+            }
+            if (s->type != ',') {
+                die("Unexpected token %s in macro %s arg %d. line: %s",
+                    s->tok, d->name, arg + extra_args_num, s->_line); exit(1);
+            }
+            skip_ws(s);
+        }
+    }
+
     if (s->type != ')') {
-        die("Unexpected args past %d in macro %s. line: %s", i, d->name, s->_line); exit(1);
+        die("Unexpected args past %d in macro %s. line: %s", arg + extra_args_num, d->name, s->_line); exit(1);
     }
 
     // perform macro replacement
     int matched;
-    int j = 0;
+    int i = 0, j = 0, k = 0;
     for (i = 0; d->replace[i]; i++) {
         const char *w = d->replace[i];
         matched = -1;
@@ -81,10 +94,20 @@ void handle_macro(const def *d, token_state *s, char **out, size_t *ind, size_t 
                 matched = j;
             }
         }
-        // if it's an arg print replacement value, else print token as-is
+
         if (matched >= 0) {
+            // if token matched against an arg name, print arg's replacement value
             add_to_out(vals[matched], out, ind, sz);
+        } else if (extra_args && strcmp(w, "__VA_ARGS__") == 0) {
+            // if token is "__VA_ARGS__", print the extra args (comma separated)
+            for (k = 0; k < extra_args_num; ++k) {
+                add_to_out(extra_args[k], out, ind, sz);
+                if (k+1 < extra_args_num) {
+                    add_to_out(", ", out, ind, sz);
+                }
+            }
         } else {
+            // else pass the token along as-is
             add_to_out(w, out, ind, sz);
         }
     }
@@ -94,5 +117,8 @@ void handle_macro(const def *d, token_state *s, char **out, size_t *ind, size_t 
         free(vals[num_args]);
     }
     free(vals);
-    free(free_buf);
+    for (i = 0; extra_args && i < extra_args_num; ++i) {
+        free(extra_args[i]);
+    }
+    free(extra_args);
 }

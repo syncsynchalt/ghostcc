@@ -30,6 +30,22 @@ void defines_add(const defines *defs, const char *name, const char *args, const 
     hashmap_add(defs->h, name, d);
 }
 
+static int skip_parens(token_state *s)
+{
+    int cont = 1;
+    int parens_count = 1;
+    while (cont && parens_count > 0) {
+        cont = get_token(NULL, 0, s);
+        if (s->type == '(') {
+            parens_count++;
+        }
+        if (s->type == ')') {
+            parens_count--;
+        }
+    }
+    return cont;
+}
+
 static char **parse_args(const char *name, const char *args)
 {
     token_state s = {};
@@ -43,15 +59,18 @@ static char **parse_args(const char *name, const char *args)
 
     const size_t len = strlen(args);
     for (;;) {
-        const int cont = get_token(args, len, &s);
+        int cont = get_token(args, len, &s);
         if (s.type == TOK_WS) {
             // ignore
+        } else if (s.type == '(') {
+            // skip past parenthesized argument in args list
+            cont = skip_parens(&s);
         } else if (s.type == ',') {
             if (comma_counter % 2 != 1) {
                 die("#define %s args extra comma in %s", name, args);
             }
             comma_counter++;
-        } else if (s.type == TOK_ID || IS_KEYWORD(s.type)) {
+        } else if (s.type == TOK_ID || IS_KEYWORD(s.type) || s.type == TOK_ELLIPSIS) {
             if (comma_counter % 2 != 0) {
                 die("#define %s args missing comma in %s", name, args);
             }
