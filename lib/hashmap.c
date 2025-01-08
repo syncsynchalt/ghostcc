@@ -2,6 +2,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
+#include "die.h"
 
 // djb2 hash function
 static unsigned int hash_function(const char *k, const unsigned int mask)
@@ -21,8 +22,7 @@ hashmap *hashmap_init(const size_t buckets)
     hashmap *h;
 
     if (!buckets || (ceil(log2((double)buckets)) != floor(log2((double)buckets)))) {
-        fprintf(stderr, "hashmap buckets must be positive power of two\n");
-        exit(3);
+        die("hashmap buckets must be positive power of two\n");
     }
 
     h = malloc(sizeof(*h));

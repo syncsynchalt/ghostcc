@@ -105,7 +105,6 @@ ast_result pp_resolve_ast(const ast_node *node)
         case '?':
             if (!node->right || !node->right->left || !node->right->right) {
                 die("Missing nodes in ternary");
-                exit(1);
             }
             if (r1.type == AST_RESULT_TYPE_FLT) {
                 return pp_resolve_ast(r1.fval ? node->right->left : node->right->right);
@@ -117,7 +116,6 @@ ast_result pp_resolve_ast(const ast_node *node)
                 node->token_type,
                 isprint(node->token_type) ? node->token_type : '?',
                 node->s);
-            exit(1);
     }
 }
 

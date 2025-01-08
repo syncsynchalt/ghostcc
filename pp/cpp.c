@@ -3,14 +3,14 @@
 #include <unistd.h>
 #include "defs.h"
 #include "preprocessor.h"
+#include "die.h"
 
 static char *infile = NULL;
 static char *outfile = NULL;
 
 void usage(int argc, char **argv)
 {
-    fprintf(stderr, "Usage: %s infile [[-o] outfile] [-I include_path]\n", argv[0]);
-    exit(1);
+    die("Usage: %s infile [[-o] outfile] [-I include_path]", argv[0]);
 }
 
 
@@ -52,13 +52,11 @@ int main(const int argc, char **argv)
 
     FILE *in = fopen(infile, "r");
     if (!in) {
-        fprintf(stderr, "Can't open %s for reading: %s\n", infile, strerror(errno));
-        exit(1);
+        die("Can't open %s for reading: %s", infile, strerror(errno));
     }
     FILE *out = outfile ? fopen(outfile, "w") : stdout;
     if (!out) {
-        fprintf(stderr, "Can't open %s for writing: %s\n", outfile, strerror(errno));
-        exit(1);
+        die("Can't open %s for writing: %s", outfile, strerror(errno));
     }
 
     defines *defs = defines_init();
