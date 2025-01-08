@@ -1,6 +1,8 @@
 #include "pp_macro.h"
 #include <string.h>
+#include <ctype.h>
 #include "die.h"
+#include "lex.h"
 
 static void add_to_out(const char *s, char **out, size_t *ind, size_t *sz)
 {
@@ -87,7 +89,75 @@ void handle_macro(const def *d, token_state *s, char **out, size_t *ind, size_t 
     int i = 0, j = 0, k = 0;
     for (i = 0; d->replace[i]; i++) {
         const char *w = d->replace[i];
+        char *ww, *www;
         matched = -1;
+
+        // handle the "#" operator
+        if (strcmp(w, "#") == 0) {
+            // find next non-space token
+            for (k = i+1; d->replace[k]; k++) {
+                if (!isspace(d->replace[k][0])) {
+                    break;
+                }
+            }
+            ww = d->replace[k];
+            if (!ww) {
+                die("String operator not followed by arg");
+            }
+            // ensure next token is a macro arg
+            for (j = 0; j < num_args; ++j) {
+                if (strcmp(ww, d->args[j]) == 0) {
+                    matched = j;
+                }
+            }
+            if (matched < 0) {
+                die("String operator not followed by arg");
+            }
+
+            // quote the arg replacement value and add it to output
+            www = quote_str(vals[matched]);
+            add_to_out(www, out, ind, sz);
+            free(www);
+            i = k;
+            continue;
+        }
+
+        // handle the "##" operator
+        // todo - "The resulting token is available for further macro replacement"
+        if (strcmp(w, "##") == 0) {
+            // delete trailing whitespace in output
+            while (ind > 0 && isspace((*out)[*ind-1])) {
+                (*ind)--;
+            }
+
+            // find next non-space token
+            for (k = i+1; d->replace[k]; k++) {
+                if (!isspace(d->replace[k][0])) {
+                    break;
+                }
+            }
+            ww = d->replace[k];
+            if (!ww) {
+                die("Concat operator not followed by arg");
+            }
+
+            // check if next token is an arg
+            for (j = 0; j < num_args; ++j) {
+                if (strcmp(ww, d->args[j]) == 0) {
+                    matched = j;
+                }
+            }
+            if (matched >= 0) {
+                // next token is a macro arg, add it to output (concatenated with previous output)
+                add_to_out(vals[matched], out, ind, sz);
+            } else {
+                // otherwise add the next token as-is (concatenated with previous output)
+                add_to_out(ww, out, ind, sz);
+            }
+            i = k;
+            continue;
+        }
+
         // check if this is an arg name
         for (j = 0; j < num_args; ++j) {
             if (strcmp(w, d->args[j]) == 0) {

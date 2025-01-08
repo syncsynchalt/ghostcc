@@ -10,8 +10,6 @@ typedef enum {
 } node_type;
 
 typedef struct _ast_node {
-    struct _ast_node *prev; // linked list used for alloc/free tracking
-    struct _ast_node *next;
     node_type node_type;
     token_type token_type;
 

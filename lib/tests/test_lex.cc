@@ -295,3 +295,26 @@ TEST(LexTest, DecodeStr)
     EXPECT_STREQ("foo A baz", decode_str(R"("foo \x41 baz")", buf, sizeof(buf)));
     EXPECT_STREQ("foo X41 baz", decode_str(R"("foo \X41 baz")", buf, sizeof(buf)));
 }
+
+TEST(LexTest, QuoteStr)
+{
+    char *p = quote_str("foo bar baz");
+    EXPECT_STREQ("\"foo bar baz\"", p);
+    free(p);
+    p = quote_str("foo\n bar\n baz");
+    EXPECT_STREQ("\"foo\\n bar\\n baz\"", p);
+    free(p);
+    p = quote_str("all specials: \a\b\f\n\r\t\v\\\'\"\?\x7f\x81\xff");
+    EXPECT_STREQ("\"all specials: \\a\\b\\f\\n\\r\\t\\v\\\\'\\\"?\\x7f\\x81\\xff\"", p);
+    free(p);
+}
+
+TEST(LexTest, RoundTrip)
+{
+    const auto input = std::string("all specials: \a\b\f\n\r\t\v\\\'\"\?\x7f\x81\xff");
+    char *p = quote_str(input.c_str());
+    char buf[512];
+    decode_str(p, buf, sizeof(buf));
+    EXPECT_EQ(input, buf);
+    free(p);
+}

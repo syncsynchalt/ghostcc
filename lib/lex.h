@@ -34,3 +34,10 @@ extern int get_token(const char *line, size_t line_len, token_state *token);
  * @return pointer to out, or NULL on decode failure.
  */
 extern char *decode_str(const char *s, char *out, size_t len);
+
+/**
+ * Encode c-style double-quoted string.
+ * @param s input string
+ * @return pointer to quoted string, must be free'd.
+ */
+extern char *quote_str(const char *s);
