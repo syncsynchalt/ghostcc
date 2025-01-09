@@ -246,7 +246,7 @@ TEST(LexTest, Comments)
     token_state s = {};
     assert_token(__LINE__, line, s, TOK_ID, "foo");
     assert_token(__LINE__, line, s, TOK_WS, " ");
-    assert_token(__LINE__, line, s, TOK_COMMENT, " ", true);
+    assert_token(__LINE__, line, s, TOK_COMMENT, "", true);
     ASSERT_EQ(s._comment_level, 1);
 
     line = " baz */ bux";

@@ -68,3 +68,17 @@ ee
 )");
     EXPECT_EQ("\naa\nee\n", output);
 }
+
+TEST(IfDefTest, IfNotDefined)
+{
+    const auto output = run_parser(R"(
+#define a
+#ifndef a
+aa
+#endif
+#ifndef bb
+bb
+#endif
+)");
+    EXPECT_EQ("\nbb\n", output);
+}

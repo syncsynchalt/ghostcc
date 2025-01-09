@@ -22,6 +22,17 @@ int main(const int argc, char **argv)
 
     include_paths = malloc(sizeof(*include_paths) * (num_include_paths + 6));
     include_paths[num_include_paths++] = strdup("/usr/include");
+    FILE *p = popen("xcrun --show-sdk-path", "r");
+    if (p) {
+        char buf[512];
+        fgets(buf, sizeof(buf), p);
+        if (strlen(buf)) {
+            const size_t len = strcspn(buf, "\r\n");
+            snprintf(buf+len, sizeof(buf)-len, "/usr/include");
+            include_paths[num_include_paths++] = strdup(buf);
+        }
+        pclose(p);
+    }
 
     while ((arg = getopt(argc, argv, "o:I:")) != -1) {
         if (arg == '?' || arg == ':') {

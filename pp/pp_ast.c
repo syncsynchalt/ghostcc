@@ -79,6 +79,9 @@ ast_result pp_resolve_ast(const ast_node *node)
         case '&':
             r.ival = r1.ival & r2.ival;
             return r;
+        case '!':
+            r.ival = V(r1) ? 0 : 1;
+            return r;
         case TOK_RIGHT_OP:
             r.ival = r1.ival >> r2.ival;
             return r;
@@ -99,6 +102,18 @@ ast_result pp_resolve_ast(const ast_node *node)
                 r.ival = V(r1) == V(r2);
             }
             return r;
+        case '<':
+            r.ival = V(r1) < V(r2) ? 1 : 0;
+            return r;
+        case '>':
+            r.ival = V(r1) > V(r2) ? 1 : 0;
+            return r;
+        case TOK_LE_OP:
+            r.ival = V(r1) <= V(r2) ? 1 : 0;
+            return r;
+        case TOK_GE_OP:
+            r.ival = V(r1) >= V(r2) ? 1 : 0;
+            return r;
         case ':':
             // ignore, this is always a right-node child of '?' and is handled below
             return r;
@@ -112,7 +127,7 @@ ast_result pp_resolve_ast(const ast_node *node)
                 return pp_resolve_ast(r1.ival ? node->right->left : node->right->right);
             }
         default:
-            die("Didn't recognize token type %d (%c / %s)",
+            die("Didn't recognize token type 0x%x (%c / %s)",
                 node->token_type,
                 isprint(node->token_type) ? node->token_type : '?',
                 node->s);

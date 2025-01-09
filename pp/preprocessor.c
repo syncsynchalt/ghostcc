@@ -12,7 +12,7 @@
 #include "pp_macro.h"
 
 static void process_directive(const char *line, size_t line_len, FILE *in, parse_state *state);
-static void process_tokens(const char *line, size_t line_len, const parse_state *state);
+static void process_tokens(const char *line, size_t line_len, parse_state *state);
 
 // ReSharper disable CppParameterMayBeConstPtrOrRef
 
@@ -22,20 +22,21 @@ void parse(const char *filename, FILE *in, FILE *out, parse_state *existing_stat
     size_t linecap;
     int len;
 
-    parse_state state = {0};
-    state.defs = existing_state ? existing_state->defs : NULL;
-    state.include_paths = existing_state ? existing_state->include_paths : NULL;
-    state.out = out;
-    state.once_filenames = existing_state && existing_state->once_filenames ?
+    parse_state ps = {0};
+    ps.defs = existing_state ? existing_state->defs : NULL;
+    ps.include_paths = existing_state ? existing_state->include_paths : NULL;
+    ps.out = out;
+    ps.once_filenames = existing_state && existing_state->once_filenames ?
         existing_state->once_filenames : hashmap_init(32);
-    state.current_filename = filename;
+    ps.current_filename = filename;
 
     while ((len = getline(&line, &linecap, in)) > 0) {
         if (line[0] == '#') {
-            process_directive(line, len, in, &state);
+            process_directive(line, len, in, &ps);
         } else {
-            if (!state.mask_level) {
-                process_tokens(line, len, &state);
+            if (!ps.mask_level) {
+                LINE_RESET(&ps.ts);
+                process_tokens(line, len, &ps);
             }
         }
     }
@@ -96,12 +97,13 @@ static char *read_full_line(const char *line, FILE *in)
     return result;
 }
 
-static void handle_ifdef(const char *line, const size_t line_len, parse_state *state)
+static void handle_ifdef(const char *line, const size_t line_len, parse_state *state, const int invert)
 {
     token_state s = {};
     get_token(line, line_len, &s);
     state->if_level++;
-    if (!state->mask_level && !defines_get(state->defs, s.tok)) {
+    const int defined = defines_get(state->defs, s.tok) ? 1 : 0;
+    if (!state->mask_level && invert ? defined : !defined) {
         state->mask_level = state->if_level;
     }
 }
@@ -170,15 +172,15 @@ static void handle_include(const char *line, const size_t line_len, parse_state 
             }
             snprintf(filename + strlen(filename), sizeof(filename) - strlen(filename), "%s", s.tok);
             if (!cont) {
-                return die("#define unterminated filename %s", line);
+                die("#define unterminated filename %s", line);
             }
         }
     } else {
-        return die("#define unrecognized filename %s", line);
+        die("#define unrecognized filename %s", line);
     }
 
     if (!resolve_include_path(filename, sizeof(filename), state->include_paths)) {
-        return die("file %s not found in include paths", filename);
+        die("file %s not found in include paths", filename);
     }
     FILE *in = fopen(filename, "r");
     parse(filename, in, state->out, state);
@@ -210,7 +212,7 @@ static void handle_define(const char *line, const size_t line_len, FILE *in, con
     token_state s = {};
     get_token(line, line_len, &s);
     if (s.type != TOK_ID && !IS_KEYWORD(s.type)) {
-        return die("#define must be an identifier: %s", line);
+        die("#define must be an identifier: %s", line);
     }
     name = strdup(s.tok);
 
@@ -219,7 +221,7 @@ static void handle_define(const char *line, const size_t line_len, FILE *in, con
         // todo handle parens in macro args
         const char *q = p + span_parens(p);
         if (*q != ')') {
-            return die("#define missing closing parens: %s", line);
+            die("#define missing closing parens: %s", line);
         }
         args = malloc(q - p);
         strncpy(args, p + 1, q - p - 1);
@@ -263,7 +265,9 @@ static void process_directive(const char *line, const size_t line_len, FILE *in,
     w += strspn(w, " \t");
 
     if (strcmp(cmd, "ifdef") == 0) {
-        handle_ifdef(w, strlen(w), state);
+        handle_ifdef(w, strlen(w), state, 0);
+    } else if (strcmp(cmd, "ifndef") == 0) {
+        handle_ifdef(w, strlen(w), state, 1);
     } else if (strcmp(cmd, "endif") == 0) {
         handle_endif(state);
     } else if (strcmp(cmd, "include") == 0) {
@@ -285,19 +289,20 @@ static void process_directive(const char *line, const size_t line_len, FILE *in,
     }
 }
 
-static void process_tokens(const char *line, const size_t line_len, const parse_state *state)
+static void process_tokens(const char *line, const size_t line_len, parse_state *state)
 {
-    token_state s = {};
+    token_state *s = &state->ts;
+
     int cont = 1;
     while (cont) {
-        cont = get_token(line, line_len, &s);
-        const def *d = defines_get(state->defs, s.tok);
+        cont = get_token(line, line_len, s);
+        const def *d = defines_get(state->defs, s->tok);
         if (d) {
             if (d->args) {
                 size_t ind = 0;
                 size_t sz = 128;
                 char *buf = calloc(1, sz);
-                handle_macro(d, &s, &buf, &ind, &sz);
+                handle_macro(d, s, &buf, &ind, &sz);
                 fprintf(state->out, "%s", buf);
                 free(buf);
             } else {
@@ -307,7 +312,7 @@ static void process_tokens(const char *line, const size_t line_len, const parse_
                 }
             }
         } else {
-            fprintf(state->out, "%s", s.tok);
+            fprintf(state->out, "%s", s->tok);
         }
     }
 }

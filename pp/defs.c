@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "hashmap.h"
 #include "lex.h"
 
 // ReSharper disable CppDFANullDereference

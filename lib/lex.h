@@ -15,6 +15,8 @@ typedef struct {
     int _comment_level;
 } token_state;
 
+#define LINE_RESET(ts) do { (ts)->_line = 0; (ts)->_line_len = 0; (ts)->ind = 0; } while(0)
+
 /**
  * get the next token from the given line
  *

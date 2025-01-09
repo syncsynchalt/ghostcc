@@ -37,12 +37,8 @@ static int copy_token(token_state *token, const token_type type, size_t len)
         token->_tok_max = len + 1;
         token->tok = realloc(token->tok, token->_tok_max);
     }
-    if (type == TOK_COMMENT) {
-        strcpy(token->tok, " ");
-    } else {
-        memcpy(token->tok, token->_line + token->ind, len);
-        token->tok[len] = '\0';
-    }
+    memcpy(token->tok, token->_line + token->ind, len);
+    token->tok[len] = '\0';
     token->type = type;
     token->pos = token->ind;
     token->ind += len;
@@ -87,6 +83,8 @@ static int eat_comment(token_state *token)
             token->_comment_level--;
             if (!token->_comment_level) {
                 copy_token(token, TOK_COMMENT, 1);
+                // collapse the comment to a single space
+                strcpy(token->tok, " ");
                 token->ind = i + 2;
                 return token->ind < token->_line_len;
             }
@@ -96,6 +94,8 @@ static int eat_comment(token_state *token)
         }
     }
     copy_token(token, TOK_COMMENT, 1);
+    // not worth preserving
+    strcpy(token->tok, "");
     token->ind = token->_line_len;
     return 0; // end of line
 }
@@ -106,10 +106,9 @@ int get_token(const char *line, const size_t line_len, token_state *token)
     size_t i;
 
     if (line && token->_line != line) {
-        // reset for new line
+        LINE_RESET(token);
         token->_line = line;
         token->_line_len = line_len;
-        token->ind = 0;
     }
 
     if (token->_comment_level) {
@@ -313,8 +312,6 @@ int get_token(const char *line, const size_t line_len, token_state *token)
 
         case '/':
             if (p[1] == '*') {
-                token->_comment_level++;
-                token->ind += 2;
                 return eat_comment(token);
             }
             if (p[1] == '/') {
