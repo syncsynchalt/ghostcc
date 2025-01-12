@@ -1,8 +1,8 @@
 #include "preprocessor.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdlib.h>
 
 #include "ast.h"
 #include "common.h"
@@ -26,15 +26,15 @@ void parse(const char *filename, FILE *in, FILE *out, parse_state *existing_stat
     ps.defs = existing_state ? existing_state->defs : NULL;
     ps.include_paths = existing_state ? existing_state->include_paths : NULL;
     ps.out = out;
-    ps.once_filenames = existing_state && existing_state->once_filenames ?
-        existing_state->once_filenames : hashmap_init(32);
+    ps.once_filenames =
+            existing_state && existing_state->once_filenames ? existing_state->once_filenames : hashmap_init(32);
     ps.current_filename = filename;
 
     while ((len = getline(&line, &linecap, in)) > 0) {
         if (line[0] == '#') {
             process_directive(line, len, in, &ps);
         } else {
-            if (!ps.mask_level) {
+            if (OUTPUT_VISIBLE(&ps)) {
                 LINE_RESET(&ps.ts);
                 process_tokens(line, len, &ps);
             }
@@ -60,6 +60,21 @@ static int resolve_include_path(char *filename, const size_t len, const char *co
         }
     }
     return 0;
+}
+
+static int resolve_condition(const char *condition, parse_state *state)
+{
+    const ast_node *node = pp_parse(condition, state->defs);
+    const ast_result pp_result = pp_resolve_ast(node);
+    switch (pp_result.type) {
+        case AST_RESULT_TYPE_INT:
+        default:
+            return !!pp_result.ival;
+        case AST_RESULT_TYPE_FLT:
+            return !!pp_result.fval;
+        case AST_RESULT_TYPE_STR:
+            return !!strlen(pp_result.sval);
+    }
 }
 
 static int line_continues(const char *line)
@@ -97,61 +112,59 @@ static char *read_full_line(const char *line, FILE *in)
     return result;
 }
 
+static void add_if_frame(parse_state *state)
+{
+    struct if_frame *new_if_frame = calloc(1, sizeof *new_if_frame);
+    new_if_frame->masked = state->top_if && !state->top_if->is_true;
+    new_if_frame->next = state->top_if;
+    state->top_if = new_if_frame;
+}
+
+static void mark_true(parse_state *state, const int truth)
+{
+    state->top_if->is_true = 0;
+    if (!state->top_if->truth_found) {
+        state->top_if->is_true = truth;
+        state->top_if->truth_found = truth;
+    }
+}
+
 static void handle_ifdef(const char *line, const size_t line_len, parse_state *state, const int invert)
 {
+    if (state->top_if->masked) {
+        return;
+    }
     token_state s = {};
     get_token(line, line_len, &s);
-    state->if_level++;
     const int defined = defines_get(state->defs, s.tok) ? 1 : 0;
-    if (!state->mask_level && invert ? defined : !defined) {
-        state->mask_level = state->if_level;
-    }
+    mark_true(state, invert ? !defined : defined);
 }
 
 static void handle_if(const char *line, FILE *in, parse_state *state)
 {
-    state->if_level++;
-    const char *condition = read_full_line(line, in);
-    if (!state->mask_level) {
-        const ast_node *node = pp_parse(condition, state->defs);
-        const ast_result pp_result = pp_resolve_ast(node);
-        int truth = 0;
-        switch (pp_result.type) {
-            case AST_RESULT_TYPE_INT:
-            default:
-                truth = !!pp_result.ival;
-                break;
-            case AST_RESULT_TYPE_FLT:
-                truth = !!pp_result.fval;
-                break;
-            case AST_RESULT_TYPE_STR:
-                truth = !!strlen(pp_result.sval);
-                break;
-        }
-        if (!truth) {
-            state->mask_level = state->if_level;
-        }
+    if (state->top_if->masked) {
+        return;
     }
+    const char *condition = read_full_line(line, in);
+    mark_true(state, resolve_condition(condition, state));
 }
 
 static void handle_else(parse_state *state)
 {
-    if (state->mask_level && state->mask_level == state->if_level) {
-        state->mask_level = 0;
-    } else if (!state->mask_level) {
-        state->mask_level = state->if_level;
+    if (state->top_if->masked) {
+        return;
     }
+    mark_true(state, 1);
 }
 
 static void handle_endif(parse_state *state)
 {
-    if (state->if_level == state->mask_level) {
-        state->mask_level = 0;
-    }
-    state->if_level--;
-    if (state->if_level < 0) {
+    if (!state->top_if) {
         die("#endif unmatched");
     }
+    struct if_frame *i = state->top_if;
+    state->top_if = state->top_if->next;
+    free(i);
 }
 
 static void handle_include(const char *line, const size_t line_len, parse_state *state)
@@ -225,7 +238,7 @@ static void handle_define(const char *line, const size_t line_len, FILE *in, con
         }
         args = malloc(q - p);
         strncpy(args, p + 1, q - p - 1);
-        p = q+1;
+        p = q + 1;
     }
     p += strspn(p, " \t");
 
@@ -265,26 +278,31 @@ static void process_directive(const char *line, const size_t line_len, FILE *in,
     w += strspn(w, " \t");
 
     if (strcmp(cmd, "ifdef") == 0) {
+        add_if_frame(state);
         handle_ifdef(w, strlen(w), state, 0);
     } else if (strcmp(cmd, "ifndef") == 0) {
+        add_if_frame(state);
         handle_ifdef(w, strlen(w), state, 1);
     } else if (strcmp(cmd, "endif") == 0) {
         handle_endif(state);
     } else if (strcmp(cmd, "include") == 0) {
-        if (!state->mask_level) {
+        if (OUTPUT_VISIBLE(state)) {
             handle_include(w, strlen(w), state);
         }
     } else if (strcmp(cmd, "define") == 0) {
-        if (!state->mask_level) {
+        if (OUTPUT_VISIBLE(state)) {
             handle_define(w, strlen(w), in, state);
         }
     } else if (strcmp(cmd, "if") == 0) {
+        add_if_frame(state);
+        handle_if(w, in, state);
+    } else if (strcmp(cmd, "elif") == 0) {
         handle_if(w, in, state);
     } else if (strcmp(cmd, "else") == 0) {
         handle_else(state);
     } else if (strcmp(cmd, "pragma") == 0) {
         handle_pragma(w, in, state);
-    } else if (!state->mask_level) {
+    } else if (OUTPUT_VISIBLE(state)) {
         fprintf(stderr, "Warning: unrecognized directive %s\n", cmd);
     }
 }

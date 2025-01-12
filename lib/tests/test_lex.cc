@@ -283,6 +283,17 @@ TEST(LexTest, NonCToken)
     assert_token(__LINE__, line, s, TOK_ID, "bar", true);
 }
 
+TEST(LexTest, CppNamespaces)
+{
+    const auto line = "foo bar::baz bux";
+    token_state s = {};
+    assert_token(__LINE__, line, s, TOK_ID, "foo");
+    assert_token(__LINE__, line, s, TOK_WS, " ");
+    assert_token(__LINE__, line, s, TOK_ID, "bar::baz");
+    assert_token(__LINE__, line, s, TOK_WS, " ");
+    assert_token(__LINE__, line, s, TOK_ID, "bux", true);
+}
+
 TEST(LexTest, DecodeStr)
 {
     char buf[512];

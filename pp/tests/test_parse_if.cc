@@ -26,6 +26,22 @@ TEST(IfTest, Complicated)
     EXPECT_EQ("\n foo\n", output);
 }
 
+TEST(IfTest, Elif)
+{
+    const auto output = run_parser(R"(
+#if 0
+ foo
+#elif 1 == 2
+ bar
+#elif 2 > 1
+ baz
+#else
+ bux
+#endif
+)");
+    EXPECT_EQ("\n baz\n", output);
+}
+
 TEST(IfTest, Nested)
 {
     const auto output = run_parser(R"(

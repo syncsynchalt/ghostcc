@@ -47,7 +47,7 @@ void handle_macro(const def *d, token_state *s, char **out, size_t *ind, size_t 
         die("Macro args for macro %s missing", d->name);
     }
     skip_ws(s);
-    int arg = 0;
+    int arg;
     for (arg = 0; arg < num_args; ++arg) {
         vals[arg] = strdup(s->tok);
         skip_ws(s);
@@ -85,12 +85,11 @@ void handle_macro(const def *d, token_state *s, char **out, size_t *ind, size_t 
     }
 
     // perform macro replacement
-    int matched;
     int i = 0, j = 0, k = 0;
     for (i = 0; d->replace[i]; i++) {
         const char *w = d->replace[i];
         char *ww, *www;
-        matched = -1;
+        int matched = -1;
 
         // handle the "#" operator
         if (strcmp(w, "#") == 0) {

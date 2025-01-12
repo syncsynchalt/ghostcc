@@ -136,6 +136,11 @@ int get_token(const char *line, const size_t line_len, token_state *token)
         case TOK_ID:
             // identifier (variable name, argument name, function name, ...)
             len = strspn(p, UPPER LOWER NUMERIC "_");
+            while (p[len] == ':' && p[len+1] == ':') {
+                // special case for C++ namespace::separators that exist in system headers
+                len += 2;
+                len += strspn(p+len, UPPER LOWER NUMERIC "_");
+            }
             line_cont = copy_token(token, TOK_ID, len);
             for (i = 0; keywords[i]; i++) {
                 // keywords such as "auto", "continue", "return", ...
