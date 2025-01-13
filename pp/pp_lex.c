@@ -106,6 +106,13 @@ void subst_tokens(void)
     scratch_len = strlen(scratch);
 }
 
+/**
+ * Two-pass lexer process:
+ *
+ * - On first call, iterate over the string doing #define replacements and resolving `defined()` pseudo-macro,
+ *   saving the result in `scratch`
+ * - On the first and successive calls return the next token from `scratch`
+ */
 int yylex(void)
 {
     if (!scratch) {
@@ -123,4 +130,16 @@ int yylex(void)
     pp_parse_line_index = s_.pos;
     yylval = make_ast_node(&s_, NULL, NULL);
     return s_.type;
+}
+
+void yyerror(const char *s)
+{
+    fprintf(stderr, "%s\n", s);
+    int i;
+    fprintf(stderr, "line: %s\n     ", pp_parse_line);
+    for (i = 0; i <= pp_parse_line_index; i++) {
+        fprintf(stderr, " ");
+    }
+    fprintf(stderr, "^\n");
+    exit(1);
 }

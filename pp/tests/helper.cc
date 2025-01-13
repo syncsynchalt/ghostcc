@@ -60,7 +60,7 @@ std::string run_parser_on_file(const std::string &filename, const std::string &e
     parse_state state = {0};
     state.defs = defs;
     state.include_paths = includes;
-    parse(filename.c_str(), in, out, &state);
+    process_file(filename.c_str(), in, out, &state);
     fclose(out);
     fclose(in);
     return strip_line_hints(read_file(outfile));

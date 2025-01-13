@@ -17,6 +17,13 @@ ast_node *combine_unary(ast_node *n1, ast_node *n2)
     return n1;
 }
 
+void f(ast_node *n)
+{
+    // free an orphaned node
+    free(n->s);
+    free(n);
+}
+
 %}
 
 // TODO xxx fixme, move tokens here?
@@ -42,7 +49,7 @@ primary_expression
     | NUM
     | STR
     | CHA
-    | '(' constant_expression ')'                           { $$ = $2; }
+    | '(' constant_expression ')'                           { $$ = $2; f($1); f($3); }
     ;
 
 postfix_expression
@@ -128,12 +135,12 @@ conditional_expression
     ;
 
 pp_function_expression
-    : ID '(' pp_arguments ')'                   { $2->left = $3; $$ = $2; }
+    : ID '(' pp_arguments ')'                   { $$ = combine_binary($1, $2, $3); f($4); }
     ;
 
 pp_arguments
     : ID
-    | ID ',' pp_arguments                       { $1->right = $3; $$ = $1; }
+    | ID ',' pp_arguments                       { $1->right = $3; $$ = $1; f($2); }
     ;
 
 constant_expression
@@ -141,6 +148,3 @@ constant_expression
     ;
 
 %%
-#include <stdio.h>
-#include "../lib/die.h"
-#include "pp_lex.h"

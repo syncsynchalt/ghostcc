@@ -13,14 +13,6 @@
 static char **parse_args(const char *name, const char *args);
 static char **parse_replace(const char *replace);
 
-/*
- * Add a #define
- *
- * Examples:
- * #define FOO                      =>  name="foo"   args=NULL        replace=NULL
- * #define FOO bar baz              =>  name="FOO"   args=NULL        replace="bar baz"
- * #define FOO(bar, bux) baz bar bux =>  name="FOO"  args="bar, bux"  replace="baz bar bux"
- */
 void defines_add(const defines *defs, const char *name, const char *args, const char *replace)
 {
     def *d = calloc(1, sizeof(*d));

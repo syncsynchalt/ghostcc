@@ -9,6 +9,7 @@ void die(const char *msg, ...)
     va_list ap;
     va_start(ap, msg);
     printf("\n");
+    fflush(stdout);
     fprintf(stderr, "\n\n\n---\nFatal error: ");
     vfprintf(stderr, msg, ap);
     fprintf(stderr, "\n");

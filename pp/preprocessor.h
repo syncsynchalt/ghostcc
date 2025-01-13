@@ -23,4 +23,4 @@ typedef struct {
 
 #define OUTPUT_ACTIVE(state) (!(state)->top_if || (state)->top_if->is_true)
 
-extern void parse(const char *filename, FILE *in, FILE *out, parse_state *existing_state);
+extern void process_file(const char *filename, FILE *in, FILE *out, parse_state *existing_state);

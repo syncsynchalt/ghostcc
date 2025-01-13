@@ -16,7 +16,7 @@ static void process_tokens(const char *line, size_t line_len, parse_state *state
 
 // ReSharper disable CppParameterMayBeConstPtrOrRef
 
-void parse(const char *filename, FILE *in, FILE *out, parse_state *existing_state)
+void process_file(const char *filename, FILE *in, FILE *out, parse_state *existing_state)
 {
     char *line = NULL;
     size_t linecap;
@@ -75,8 +75,8 @@ static int resolve_include_path(char *filename, const size_t len, const char *co
 
 static int resolve_condition(const char *condition, parse_state *state)
 {
-    const ast_node *node = pp_parse(condition, state->defs);
-    const ast_result pp_result = pp_resolve_ast(node);
+    const ast_node *node = string_to_ast(condition, state->defs);
+    const ast_result pp_result = resolve_ast(node);
     switch (pp_result.type) {
         case AST_RESULT_TYPE_INT:
         default:
@@ -217,7 +217,7 @@ static void handle_include(const char *line, parse_state *state)
     const int existing_line = current_lineno;
     FILE *in = fopen(filename, "r");
     // ReSharper disable once CppDFALocalValueEscapesFunction
-    parse(filename, in, state->out, state);
+    process_file(filename, in, state->out, state);
     current_file = existing_file;
     current_lineno = existing_line;
     fprintf(state->out, "# %d \"%s\"\n", current_lineno, current_file);

@@ -71,3 +71,15 @@ TEST(MacroTest, MacroVarArgEmpty)
  printf("foo %d %d", );
 )", output); // sic
 }
+
+TEST(MacroTest, DISABLED_ArgReplace)
+{
+    const auto output = run_parser(R"(
+#define A(x, y) x
+#define B(x, y) x
+a = A(B(1, 2), 3)
+)");
+    EXPECT_EQ(R"(
+a = 1
+)", output); // sic
+}

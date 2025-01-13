@@ -7,7 +7,7 @@
 
 extern int yyparse();
 
-ast_node *pp_parse(const char *s, const defines *defs)
+ast_node *string_to_ast(const char *s, const defines *defs)
 {
     reset_parser();
     pp_parse_target = (char *) s;
@@ -16,7 +16,7 @@ ast_node *pp_parse(const char *s, const defines *defs)
     return pp_parse_result;
 }
 
-ast_result pp_resolve_ast(const ast_node *node)
+ast_result resolve_ast(const ast_node *node)
 {
     ast_result r = {0};
     if (!node) {
@@ -59,17 +59,17 @@ ast_result pp_resolve_ast(const ast_node *node)
     switch ((int)node->token_type) {
         case TOK_AND_OP:
             r.ival = 0;
-            r1 = pp_resolve_ast(node->left);
+            r1 = resolve_ast(node->left);
             if (V(r1)) {
-                r2 = pp_resolve_ast(node->right);
+                r2 = resolve_ast(node->right);
                 r.ival = V(r1) && V(r2);
             }
             return r;
         case TOK_OR_OP:
-            r1 = pp_resolve_ast(node->left);
+            r1 = resolve_ast(node->left);
             r.ival = V(r1) ? 1 : 0;
             if (!V(r1)) {
-                r2 = pp_resolve_ast(node->right);
+                r2 = resolve_ast(node->right);
                 r.ival = V(r1) || V(r2);
             }
             return r;
@@ -80,14 +80,14 @@ ast_result pp_resolve_ast(const ast_node *node)
             if (!node->left || !node->right || !node->right->left || !node->right->right) {
                 die("Missing nodes in ternary");
             }
-            r1 = pp_resolve_ast(node->left);
-            return pp_resolve_ast(V(r1) ? node->right->left : node->right->right);
+            r1 = resolve_ast(node->left);
+            return resolve_ast(V(r1) ? node->right->left : node->right->right);
         default:
             break;
     }
 
-    r1 = pp_resolve_ast(node->left);
-    r2 = pp_resolve_ast(node->right);
+    r1 = resolve_ast(node->left);
+    r2 = resolve_ast(node->right);
     switch ((int)node->token_type) {
         case '+':
             VR(V(r1) + V(r2))
@@ -148,16 +148,4 @@ ast_result pp_resolve_ast(const ast_node *node)
             die("Didn't recognize token type 0x%x / %d (as char: %c, as str: %s)", node->token_type, node->token_type,
                 isprint(node->token_type) ? node->token_type : ' ', node->s);
     }
-}
-
-void yyerror(const char *s)
-{
-    fprintf(stderr, "%s\n", s);
-    int i;
-    fprintf(stderr, "line: %s\n     ", pp_parse_line);
-    for (i = 0; i <= pp_parse_line_index; i++) {
-        fprintf(stderr, " ");
-    }
-    fprintf(stderr, "^\n");
-    exit(1);
 }

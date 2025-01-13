@@ -19,7 +19,7 @@ foo
     FileDeleter fd1(infile), fd2(outfile);
     FILE *fin = fopen(infile.c_str(), "r");
     FILE *fout = fopen(outfile.c_str(), "w");
-    parse(infile.c_str(), fin, fout, NULL);
+    process_file(infile.c_str(), fin, fout, NULL);
     fclose(fin);
     fclose(fout);
     EXPECT_EQ(" \nfoo\n", strip_line_hints(read_file(outfile)));
