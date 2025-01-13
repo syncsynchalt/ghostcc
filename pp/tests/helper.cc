@@ -42,6 +42,7 @@ std::string run_parser_on_file(const std::string &filename, const std::string &e
         includes[2] = NULL;
     }
     const auto outfile = write_file("");
+    FileDeleter fd(outfile);
     FILE *in = fopen(filename.c_str(), "r");
     FILE *out = fopen(outfile.c_str(), "w");
     parse_state state = {0};

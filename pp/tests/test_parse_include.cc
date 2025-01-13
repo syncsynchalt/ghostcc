@@ -15,3 +15,17 @@ TEST(IncludesTest, Simple)
     const auto output = run_parser(input);
     EXPECT_EQ("a b c\nd e f\n xyz \n", output);
 }
+
+TEST(IncludesTest, MissingEndif)
+{
+    const auto file1 = write_file(R"(
+#if 0
+foo
+#else
+)");
+    FileDeleter f1(file1);
+    const auto input = "#include \"" + file1 + "\"\n";
+    EXPECT_DEATH({
+        const auto output = run_parser(input);
+    }, "Missing #endif in");
+}

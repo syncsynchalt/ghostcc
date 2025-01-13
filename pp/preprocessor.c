@@ -31,6 +31,8 @@ void parse(const char *filename, FILE *in, FILE *out, parse_state *existing_stat
     ps.current_filename = filename;
 
     while ((len = getline(&line, &linecap, in)) > 0) {
+        current_lineno++;
+        current_line = line;
         if (line[0] == '#') {
             process_directive(line, len, in, &ps);
         } else {
@@ -40,8 +42,13 @@ void parse(const char *filename, FILE *in, FILE *out, parse_state *existing_stat
             }
         }
     }
+    current_line = NULL;
     if (ferror(in)) {
         die("reading input file");
+    }
+
+    if (ps.top_if) {
+        die("Missing #endif in %s", filename);
     }
 }
 
@@ -195,8 +202,15 @@ static void handle_include(const char *line, const size_t line_len, parse_state 
     if (!resolve_include_path(filename, sizeof(filename), state->include_paths)) {
         die("file %s not found in include paths", filename);
     }
+    const char *existing_file = current_file;
+    const int existing_line = current_lineno;
     FILE *in = fopen(filename, "r");
+    // ReSharper disable once CppDFALocalValueEscapesFunction
+    current_file = filename;
+    current_lineno = 0;
     parse(filename, in, state->out, state);
+    current_file = existing_file;
+    current_lineno = existing_line;
 }
 
 int span_parens(const char *p)

@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include "common.h"
 #include "defs.h"
 #include "preprocessor.h"
 #include "die.h"
@@ -75,6 +76,9 @@ int main(const int argc, char **argv)
     parse_state state = {0};
     state.defs = defs;
     state.include_paths = include_paths;
+    current_file = infile;
+    current_lineno = 0;
+    current_line = NULL;
     parse(infile, in, out, &state);
     fclose(out);
     fclose(in);

@@ -91,3 +91,17 @@ TEST(IfTest, Defined)
 )");
     EXPECT_EQ("\n foo\n bar\n fred or baz\n", output);
 }
+
+TEST(IfTest, DefinedShortcut)
+{
+    const auto output = run_parser(R"(
+#define FOO 1
+#if defined(FOO) && FOO
+ foo
+#elif defined(BAR) && BAR
+ bar
+#endif
+ baz
+)");
+    EXPECT_EQ("\n foo\n baz\n", output);
+}
