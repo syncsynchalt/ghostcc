@@ -21,6 +21,6 @@ typedef struct {
   token_state ts;
 } parse_state;
 
-#define OUTPUT_VISIBLE(state) (!(state)->top_if || (state)->top_if->is_true)
+#define OUTPUT_ACTIVE(state) (!(state)->top_if || (state)->top_if->is_true)
 
 extern void parse(const char *filename, FILE *in, FILE *out, parse_state *existing_state);

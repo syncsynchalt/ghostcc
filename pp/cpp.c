@@ -76,9 +76,6 @@ int main(const int argc, char **argv)
     parse_state state = {0};
     state.defs = defs;
     state.include_paths = include_paths;
-    current_file = infile;
-    current_lineno = 0;
-    current_line = NULL;
     parse(infile, in, out, &state);
     fclose(out);
     fclose(in);

@@ -22,7 +22,7 @@ foo
     parse(infile.c_str(), fin, fout, NULL);
     fclose(fin);
     fclose(fout);
-    EXPECT_EQ(" \nfoo\n", read_file(outfile));
+    EXPECT_EQ(" \nfoo\n", strip_line_hints(read_file(outfile)));
 }
 
 TEST(TestParse, TernaryShortCircuit)
@@ -49,4 +49,14 @@ bar
 #endif
 )");
     EXPECT_EQ("\n", output);
+}
+
+TEST(TestParse, LeadingSpace)
+{
+    const auto output = run_parser(std::string("\t") + R"(  #define FOO
+    # if defined(FOO)
+ bar
+    # endif
+)");
+    EXPECT_EQ(" bar\n", output);
 }

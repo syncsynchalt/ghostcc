@@ -52,10 +52,10 @@ void handle_macro(const def *d, token_state *s, char **out, size_t *ind, size_t 
         vals[arg] = strdup(s->tok);
         skip_ws(s);
         if (s->type != ',' && s->type != ')') {
-            die("Unexpected token %s in macro %s arg %d. line: %s", s->tok, d->name, arg, s->_line);
+            die("Unexpected token %s in macro %s arg %d", s->tok, d->name, arg+1);
         }
         if (s->type == ')' && arg+1 != num_args) {
-            die("Unexpected end of args in macro %s. line: %s", d->name, s->_line);
+            die("Unexpected end of args in macro %s", d->name);
         }
         if (s->type != ')') {
             skip_ws(s);
@@ -76,7 +76,7 @@ void handle_macro(const def *d, token_state *s, char **out, size_t *ind, size_t 
     }
 
     if (s->type != ')') {
-        die("Unexpected args past %d in macro %s. line: %s", arg + extra_args_num, d->name, s->_line);
+        die("Unexpected args past %d in macro %s", arg + extra_args_num, d->name);
     }
 
     // perform macro replacement

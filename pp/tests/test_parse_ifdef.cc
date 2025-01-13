@@ -82,3 +82,20 @@ bb
 )");
     EXPECT_EQ("\nbb\n", output);
 }
+
+TEST(IfDefTest, Undef)
+{
+    const auto output = run_parser(R"(
+#define a 1
+#define b 2
+#undef a
+#ifdef a
+aa
+#endif
+#ifdef b
+bb
+#endif
+cc
+)");
+    EXPECT_EQ("\nbb\ncc\n", output);
+}

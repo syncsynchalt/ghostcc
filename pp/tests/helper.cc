@@ -33,6 +33,18 @@ std::string run_parser(const std::string &input, const std::string &extra_includ
     return run_parser_on_file(infile, extra_include_path);
 }
 
+std::string strip_line_hints(std::string s)
+{
+    size_t ind;
+    while (s[0] == '#') {
+        s = s.replace(0, s.find('\n') + 1, "");
+    }
+    while ((ind = s.find("\n#")) != std::string::npos) {
+        s = s.replace(ind+1, s.find('\n', ind+1) - ind, "");
+    }
+    return s;
+}
+
 std::string run_parser_on_file(const std::string &filename, const std::string &extra_include_path)
 {
     const auto defs = defines_init();
@@ -51,7 +63,7 @@ std::string run_parser_on_file(const std::string &filename, const std::string &e
     parse(filename.c_str(), in, out, &state);
     fclose(out);
     fclose(in);
-    return read_file(outfile);
+    return strip_line_hints(read_file(outfile));
 }
 
 std::string print_ast(const ast_node *node)

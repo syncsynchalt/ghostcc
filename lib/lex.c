@@ -172,6 +172,7 @@ int get_token(const char *line, const size_t line_len, token_state *token)
                 // 0xABCDEF
                 len = 2;
                 len += strspn(p + len, HEXNUM);
+                len += strspn(p + len, "uUlLfF");
             } else {
                 // 123, 0123, 1.23, 1.2e3, 123u, 123L, 12.3f, 12.3F, etc
                 len = strspn(p, NUMERIC);

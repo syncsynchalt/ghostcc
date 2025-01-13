@@ -66,8 +66,8 @@ void handle_defined(token_state *ts, size_t *scratch_ind)
     }
 
     if (found_parens) {
-        die("Unexpected %s while looking for closing parens on line: %s",
-            ts->ind < pp_parse_target_len ? ts->tok : "end-of-line", ts->_line);
+        die("Unexpected %s while looking for closing parens",
+            ts->ind < pp_parse_target_len ? ts->tok : "end-of-line");
     }
 }
 

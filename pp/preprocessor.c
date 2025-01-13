@@ -22,6 +22,10 @@ void parse(const char *filename, FILE *in, FILE *out, parse_state *existing_stat
     size_t linecap;
     int len;
 
+    current_file = filename;
+    current_lineno = 0;
+    fprintf(out, "# %d \"%s\"\n", current_lineno+1, current_file);
+
     parse_state ps = {0};
     ps.defs = existing_state ? existing_state->defs : NULL;
     ps.include_paths = existing_state ? existing_state->include_paths : NULL;
@@ -33,10 +37,10 @@ void parse(const char *filename, FILE *in, FILE *out, parse_state *existing_stat
     while ((len = getline(&line, &linecap, in)) > 0) {
         current_lineno++;
         current_line = line;
-        if (line[0] == '#') {
+        if (line[strspn(line, " \t")] == '#') {
             process_directive(line, len, in, &ps);
         } else {
-            if (OUTPUT_VISIBLE(&ps)) {
+            if (OUTPUT_ACTIVE(&ps)) {
                 LINE_RESET(&ps.ts);
                 process_tokens(line, len, &ps);
             }
@@ -98,9 +102,10 @@ static void strip_continue(const char *line)
     }
 }
 
-static char *read_full_line(const char *line, FILE *in)
+static char *read_full_line(const char *line, FILE *in, parse_state *state)
 {
     char *result;
+    int multiline = 0;
     result = strdup(line);
     while (line_continues(result)) {
         strip_continue(result);
@@ -109,12 +114,17 @@ static char *read_full_line(const char *line, FILE *in)
         if (getline(&l, &ll, in) < 0) {
             break;
         }
+        current_lineno++;
+        multiline++;
         result = realloc(result, strlen(result) + strlen(l) + 1);
         strcat(result, l);
         free(l);
     }
     while (strlen(result) && result[strlen(result) - 1] == '\r' || result[strlen(result) - 1] == '\n') {
         result[strlen(result) - 1] = '\0';
+    }
+    if (multiline && OUTPUT_ACTIVE(state)) {
+        fprintf(state->out, "# %d \"%s\"\n", current_lineno, current_file);
     }
     return result;
 }
@@ -136,13 +146,13 @@ static void mark_true(parse_state *state, const int truth)
     }
 }
 
-static void handle_ifdef(const char *line, const size_t line_len, parse_state *state, const int invert)
+static void handle_ifdef(const char *line, parse_state *state, const int invert)
 {
     if (state->top_if->masked) {
         return;
     }
     token_state s = {};
-    get_token(line, line_len, &s);
+    get_token(line, strlen(line), &s);
     const int defined = defines_get(state->defs, s.tok) ? 1 : 0;
     mark_true(state, invert ? !defined : defined);
 }
@@ -152,7 +162,7 @@ static void handle_if(const char *line, FILE *in, parse_state *state)
     if (state->top_if->masked) {
         return;
     }
-    const char *condition = read_full_line(line, in);
+    const char *condition = read_full_line(line, in, state);
     mark_true(state, resolve_condition(condition, state));
 }
 
@@ -174,10 +184,11 @@ static void handle_endif(parse_state *state)
     free(i);
 }
 
-static void handle_include(const char *line, const size_t line_len, parse_state *state)
+static void handle_include(const char *line, parse_state *state)
 {
     token_state s = {};
     char filename[256] = {};
+    const size_t line_len = strlen(line);
 
     get_token(line, line_len, &s);
     if (s.type == TOK_STR) {
@@ -206,11 +217,10 @@ static void handle_include(const char *line, const size_t line_len, parse_state 
     const int existing_line = current_lineno;
     FILE *in = fopen(filename, "r");
     // ReSharper disable once CppDFALocalValueEscapesFunction
-    current_file = filename;
-    current_lineno = 0;
     parse(filename, in, state->out, state);
     current_file = existing_file;
     current_lineno = existing_line;
+    fprintf(state->out, "# %d \"%s\"\n", current_lineno, current_file);
 }
 
 int span_parens(const char *p)
@@ -231,13 +241,13 @@ int span_parens(const char *p)
     return i;
 }
 
-static void handle_define(const char *line, const size_t line_len, FILE *in, const parse_state *state)
+static void handle_define(const char *line, FILE *in, parse_state *state)
 {
     char *name = NULL;
     char *args = NULL;
 
     token_state s = {};
-    get_token(line, line_len, &s);
+    get_token(line, strlen(line), &s);
     if (s.type != TOK_ID && !IS_KEYWORD(s.type)) {
         die("#define must be an identifier: %s", line);
     }
@@ -256,12 +266,22 @@ static void handle_define(const char *line, const size_t line_len, FILE *in, con
     }
     p += strspn(p, " \t");
 
-    char *full_line = read_full_line(p, in);
+    char *full_line = read_full_line(p, in, state);
 
     defines_add(state->defs, name, args, full_line);
     free(name);
     free(args);
     free(full_line);
+}
+
+static void handle_undef(const char *line, const parse_state *state)
+{
+    token_state s = {};
+    get_token(line, strlen(line), &s);
+    if (s.type != TOK_ID && !IS_KEYWORD(s.type)) {
+        die("#undef must be an identifier: %s", line);
+    }
+    defines_remove(state->defs, s.tok);
 }
 
 static void handle_pragma(const char *line, FILE *in, const parse_state *state)
@@ -284,7 +304,8 @@ static void handle_pragma(const char *line, FILE *in, const parse_state *state)
 static void process_directive(const char *line, const size_t line_len, FILE *in, parse_state *state)
 {
     char cmd[64];
-    const char *w = line + 1;
+    const char *w = line + strspn(line, " \t");
+    w += 1;
     w += strspn(w, " \t");
     const int len = strspn(w, LOWER);
     snprintf(cmd, sizeof(cmd), "%.*s", len, w);
@@ -293,19 +314,24 @@ static void process_directive(const char *line, const size_t line_len, FILE *in,
 
     if (strcmp(cmd, "ifdef") == 0) {
         add_if_frame(state);
-        handle_ifdef(w, strlen(w), state, 0);
+        handle_ifdef(w, state, 0);
     } else if (strcmp(cmd, "ifndef") == 0) {
         add_if_frame(state);
-        handle_ifdef(w, strlen(w), state, 1);
+        handle_ifdef(w, state, 1);
     } else if (strcmp(cmd, "endif") == 0) {
         handle_endif(state);
+        fprintf(state->out, "# %d \"%s\"\n", current_lineno, current_file);
     } else if (strcmp(cmd, "include") == 0) {
-        if (OUTPUT_VISIBLE(state)) {
-            handle_include(w, strlen(w), state);
+        if (OUTPUT_ACTIVE(state)) {
+            handle_include(w, state);
         }
     } else if (strcmp(cmd, "define") == 0) {
-        if (OUTPUT_VISIBLE(state)) {
-            handle_define(w, strlen(w), in, state);
+        if (OUTPUT_ACTIVE(state)) {
+            handle_define(w, in, state);
+        }
+    } else if (strcmp(cmd, "undef") == 0) {
+        if (OUTPUT_ACTIVE(state)) {
+            handle_undef(w, state);
         }
     } else if (strcmp(cmd, "if") == 0) {
         add_if_frame(state);
@@ -316,7 +342,7 @@ static void process_directive(const char *line, const size_t line_len, FILE *in,
         handle_else(state);
     } else if (strcmp(cmd, "pragma") == 0) {
         handle_pragma(w, in, state);
-    } else if (OUTPUT_VISIBLE(state)) {
+    } else if (OUTPUT_ACTIVE(state)) {
         fprintf(stderr, "Warning: unrecognized directive %s\n", cmd);
     }
 }

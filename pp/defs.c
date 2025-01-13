@@ -31,6 +31,24 @@ void defines_add(const defines *defs, const char *name, const char *args, const 
     hashmap_add(defs->h, name, d);
 }
 
+int defines_remove(const defines *defs, const char *name)
+{
+    const def *d = hashmap_delete(defs->h, name);
+    if (d) {
+        free(d->name);
+        int i;
+        for (i = 0; d->args && d->args[i]; i++) {
+            free(d->args[i]);
+        }
+        for (i = 0; d->replace && d->replace[i]; i++) {
+            free(d->replace[i]);
+        }
+        free((void *)d);
+        return 1;
+    }
+    return 0;
+}
+
 static int skip_parens(token_state *s)
 {
     int cont = 1;
@@ -543,15 +561,11 @@ defines *defines_init(void)
 
     // fixes for system-specific issues
     defines_add(defs, "__has_include", "...", "0");
-    defines_add(defs, "__DARWIN_C_FULL", NULL, "900000L");
 
     return defs;
 }
 
-const def *defines_get(const defines *defs, const char *name)
-{
-    return defs ? hashmap_get(defs->h, name) : NULL;
-}
+const def *defines_get(const defines *defs, const char *name) { return defs ? hashmap_get(defs->h, name) : NULL; }
 
 void defines_destroy(defines *defs)
 {
@@ -559,14 +573,14 @@ void defines_destroy(defines *defs)
     hashmap_entry *e;
 
     while ((e = hashmap_iter(defs->h, &iter))) {
-        def *d = (def *)e->data;
-        free((void *)d->name);
+        def *d = (def *) e->data;
+        free((void *) d->name);
         int i;
         for (i = 0; d->args && d->args[i]; i++) {
-            free((void *)d->args[i]);
+            free((void *) d->args[i]);
         }
         for (i = 0; d->replace && d->replace[i]; i++) {
-            free((void *)d->replace[i]);
+            free((void *) d->replace[i]);
         }
         free(d);
     }
