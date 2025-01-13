@@ -38,3 +38,15 @@ TEST(TestParse, TernaryShortCircuit)
 )");
     EXPECT_EQ("\n foo\n", output);
 }
+
+TEST(TestParse, HasInclude)
+{
+    const auto output = run_parser(R"(
+#if __has_include(<foo.h>)
+foo
+#elif __has_include("bar.h")
+bar
+#endif
+)");
+    EXPECT_EQ("\n", output);
+}

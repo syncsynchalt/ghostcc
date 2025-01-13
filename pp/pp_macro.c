@@ -68,15 +68,10 @@ void handle_macro(const def *d, token_state *s, char **out, size_t *ind, size_t 
                 extra_args = realloc(extra_args, (extra_args_num + 5) * sizeof(*extra_args));
             }
             extra_args[extra_args_num++] = strdup(s->tok);
-            skip_ws(s);
+            get_token(s->_line, s->_line_len, s);
             if (s->type == ')' || s->ind >= s->_line_len) {
                 break;
             }
-            if (s->type != ',') {
-                die("Unexpected token %s in macro %s arg %d. line: %s",
-                    s->tok, d->name, arg + extra_args_num, s->_line);
-            }
-            skip_ws(s);
         }
     }
 
@@ -171,9 +166,6 @@ void handle_macro(const def *d, token_state *s, char **out, size_t *ind, size_t 
             // if token is "__VA_ARGS__", print the extra args (comma separated)
             for (k = 0; k < extra_args_num; ++k) {
                 add_to_out(extra_args[k], out, ind, sz);
-                if (k+1 < extra_args_num) {
-                    add_to_out(", ", out, ind, sz);
-                }
             }
         } else {
             // else pass the token along as-is

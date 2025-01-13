@@ -61,7 +61,7 @@ static char **parse_args(const char *name, const char *args)
     const size_t len = strlen(args);
     for (;;) {
         int cont = get_token(args, len, &s);
-        if (s.type == TOK_WS) {
+        if (!len || s.type == TOK_WS) {
             // ignore
         } else if (s.type == '(') {
             // skip past parenthesized argument in args list
@@ -81,7 +81,7 @@ static char **parse_args(const char *name, const char *args)
             }
             result[n++] = strdup(s.tok);
         } else {
-            die("#define %s(%s) bad arg %s", name, args, s.tok);
+            die("#define %s(%s) bad arg \"%s\"", name, args, s.tok);
         }
         if (!cont) {
             break;
@@ -540,6 +540,10 @@ defines *defines_init(void)
     defines_add(defs, "__strong", NULL, "");
     defines_add(defs, "__unsafe_unretained", NULL, "");
     defines_add(defs, "__weak", NULL, NULL);
+
+    // fixes for system-specific issues
+    defines_add(defs, "__has_include", "...", "0");
+    defines_add(defs, "__DARWIN_C_FULL", NULL, "900000L");
 
     return defs;
 }

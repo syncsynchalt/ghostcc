@@ -139,6 +139,10 @@ ast_result pp_resolve_ast(const ast_node *node)
         case TOK_GE_OP:
             r.ival = V(r1) >= V(r2) ? 1 : 0;
             return r;
+        case TOK_ID:
+            fprintf(stderr, "Warning: ignoring unrecognized identifier %s\n", node->s);
+            r.ival = 0;
+            return r;
 
         default:
             die("Didn't recognize token type 0x%x / %d (as char: %c, as str: %s)", node->token_type, node->token_type,
