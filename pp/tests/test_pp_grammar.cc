@@ -8,8 +8,7 @@ extern int yyparse(void);
 
 ast_node *process_file(const std::string &s)
 {
-    reset_parser();
-    pp_parse_target = (char *)s.c_str();
+    reset_parser(s.c_str(), NULL);
     yyparse();
     return pp_parse_result;
 }

@@ -9,9 +9,7 @@ extern int yyparse();
 
 ast_node *string_to_ast(const char *s, const defines *defs)
 {
-    reset_parser();
-    pp_parse_target = (char *) s;
-    pp_parse_defs = defs;
+    reset_parser(s, defs);
     yyparse();
     return pp_parse_result;
 }

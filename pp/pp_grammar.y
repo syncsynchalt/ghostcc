@@ -54,7 +54,6 @@ primary_expression
 
 postfix_expression
     : primary_expression
-    | pp_function_expression
     ;
 
 unary_expression
@@ -132,15 +131,6 @@ conditional_expression
     : logical_or_expression
     | logical_or_expression '?' conditional_expression ':' conditional_expression
                 { $2->left = $1; $2->right = $4; $4->left = $3; $4->right = $5; $$ = $2; }
-    ;
-
-pp_function_expression
-    : ID '(' pp_arguments ')'                   { $$ = combine_binary($1, $2, $3); f($4); }
-    ;
-
-pp_arguments
-    : ID
-    | ID ',' pp_arguments                       { $1->right = $3; $$ = $1; f($2); }
     ;
 
 constant_expression

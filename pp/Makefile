@@ -6,7 +6,7 @@ LDFLAGS=-L../lib -lcommon
 
 all: ghostpp
 
-test:
+test: all
 	$(MAKE) -C tests test
 
 ghostpp: $(OBJ) ../lib/libcommon.a

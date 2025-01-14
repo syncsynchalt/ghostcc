@@ -4,10 +4,10 @@
 #include "token.h"
 
 typedef struct {
-    token_type type; //< parsed token type
-    char *tok; //< parsed token as string
-    size_t pos; //< offset into line that token starts at
-    size_t ind; //< start of next token
+    token_type type; ///< parsed token type
+    char *tok; ///< parsed token as string
+    size_t pos; ///< offset into line that token starts at
+    size_t ind; ///< start of next token
 
     int _tok_max;
     const char *_line;
@@ -16,6 +16,7 @@ typedef struct {
 } token_state;
 
 #define LINE_RESET(ts) do { (ts)->_line = 0; (ts)->_line_len = 0; (ts)->ind = 0; } while(0)
+#define LINE_DONE(ts, line) ((ts)->_line == line && (ts)->ind >= (ts)->_line_len)
 
 /**
  * get the next token from the given line

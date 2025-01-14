@@ -3,30 +3,20 @@
 #include <ctype.h>
 #include "die.h"
 #include "lex.h"
-
-static void add_to_out(const char *s, char **out, size_t *ind, size_t *sz)
-{
-    const size_t slen = strlen(s);
-    while (slen + *ind >= *sz) {
-        *sz = *sz ? 128 : *sz * 2;
-        *out = realloc(*out, *sz);
-    }
-    strcpy(*out + *ind, s);
-    *ind += slen;
-}
+#include "str.h"
 
 static int skip_ws(token_state *s)
 {
-    while (s->ind < s->_line_len) {
+    while (!LINE_DONE(s, s->_line)) {
         get_token(s->_line, s->_line_len, s);
         if (s->type != TOK_WS) {
             break;
         }
     }
-    return s->ind < s->_line_len;
+    return !LINE_DONE(s, s->_line);
 }
 
-void handle_macro(const def *d, token_state *s, char **out, size_t *ind, size_t *sz)
+void handle_macro(const def *d, token_state *s, str_t *out)
 {
     char **extra_args = NULL;
     int extra_args_num = 0;
@@ -110,7 +100,7 @@ void handle_macro(const def *d, token_state *s, char **out, size_t *ind, size_t 
 
             // quote the arg replacement value and add it to output
             www = quote_str(vals[matched]);
-            add_to_out(www, out, ind, sz);
+            add_to_str(out, www);
             free(www);
             i = k;
             continue;
@@ -120,8 +110,8 @@ void handle_macro(const def *d, token_state *s, char **out, size_t *ind, size_t 
         // todo - "The resulting token is available for further macro replacement"
         if (strcmp(w, "##") == 0) {
             // delete trailing whitespace in output
-            while (ind > 0 && isspace((*out)[*ind-1])) {
-                (*ind)--;
+            while (out->end > 0 && isspace(out->s[out->end-1])) {
+                out->s[--out->end] = '\0';
             }
 
             // find next non-space token
@@ -143,10 +133,10 @@ void handle_macro(const def *d, token_state *s, char **out, size_t *ind, size_t 
             }
             if (matched >= 0) {
                 // next token is a macro arg, add it to output (concatenated with previous output)
-                add_to_out(vals[matched], out, ind, sz);
+                add_to_str(out, vals[matched]);
             } else {
                 // otherwise add the next token as-is (concatenated with previous output)
-                add_to_out(ww, out, ind, sz);
+                add_to_str(out, ww);
             }
             i = k;
             continue;
@@ -161,15 +151,15 @@ void handle_macro(const def *d, token_state *s, char **out, size_t *ind, size_t 
 
         if (matched >= 0) {
             // if token matched against an arg name, print arg's replacement value
-            add_to_out(vals[matched], out, ind, sz);
+            add_to_str(out, vals[matched]);
         } else if (extra_args && strcmp(w, "__VA_ARGS__") == 0) {
             // if token is "__VA_ARGS__", print the extra args (comma separated)
             for (k = 0; k < extra_args_num; ++k) {
-                add_to_out(extra_args[k], out, ind, sz);
+                add_to_str(out, extra_args[k]);
             }
         } else {
             // else pass the token along as-is
-            add_to_out(w, out, ind, sz);
+            add_to_str(out, w);
         }
     }
 

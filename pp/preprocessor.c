@@ -8,6 +8,7 @@
 #include "common.h"
 #include "die.h"
 #include "lex.h"
+#include "str.h"
 #include "pp_ast.h"
 #include "pp_macro.h"
 
@@ -357,12 +358,10 @@ static void process_tokens(const char *line, const size_t line_len, parse_state 
         const def *d = defines_get(state->defs, s->tok);
         if (d) {
             if (d->args) {
-                size_t ind = 0;
-                size_t sz = 128;
-                char *buf = calloc(1, sz);
-                handle_macro(d, s, &buf, &ind, &sz);
-                fprintf(state->out, "%s", buf);
-                free(buf);
+                str_t result = {0};
+                handle_macro(d, s, &result);
+                fprintf(state->out, "%s", result.s);
+                free(result.s);
             } else {
                 int i = 0;
                 while (d->replace && d->replace[i]) {

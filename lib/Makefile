@@ -8,7 +8,7 @@ all: libcommon.a
 libcommon.a: $(OBJ)
 	ar rcs $@ $^
 
-test:
+test: all
 	$(MAKE) -C tests
 
 clean:
