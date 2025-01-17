@@ -12,17 +12,13 @@
 #include "pp_ast.h"
 #include "pp_macro.h"
 
-static void process_directive(const char *line, size_t line_len, FILE *in, parse_state *state);
-static void process_tokens(const char *line, size_t line_len, parse_state *state);
+static void process_directive(token_state *ts, parse_state *state);
+static void process_tokens(token_state *ts, parse_state *state);
 
 // ReSharper disable CppParameterMayBeConstPtrOrRef
 
 void process_file(const char *filename, FILE *in, FILE *out, parse_state *existing_state)
 {
-    char *line = NULL;
-    size_t linecap;
-    int len;
-
     current_file = filename;
     current_lineno = 0;
     fprintf(out, "# %d \"%s\"\n", current_lineno+1, current_file);
@@ -35,15 +31,18 @@ void process_file(const char *filename, FILE *in, FILE *out, parse_state *existi
             existing_state && existing_state->once_filenames ? existing_state->once_filenames : hashmap_init(32);
     ps.current_filename = filename;
 
-    while ((len = getline(&line, &linecap, in)) > 0) {
-        current_lineno++;
-        current_line = line;
-        if (line[strspn(line, " \t")] == '#') {
-            process_directive(line, len, in, &ps);
+    token_state *ts = &ps.ts;
+    set_token_file(ts, in, filename);
+
+    while (!feof(in)) {
+        if (TOKEN_STATE_DIRECTIVE(ts)) {
+            process_directive(ts, &ps);
+            clear_directive(ts);
         } else {
-            if (OUTPUT_ACTIVE(&ps)) {
-                LINE_RESET(&ps.ts);
-                process_tokens(line, len, &ps);
+            if (output_active) {
+                process_tokens(ts, &ps);
+            } else {
+                skip_line(ts);
             }
         }
     }
@@ -89,47 +88,6 @@ static int resolve_condition(const char *condition, parse_state *state)
     }
 }
 
-static int line_continues(const char *line)
-{
-    const char *last_bs = strrchr(line, '\\');
-    return last_bs && *(last_bs + 1 + strspn(last_bs + 1, "\r\n")) == '\0';
-}
-
-static void strip_continue(const char *line)
-{
-    char *last_bs = strrchr(line, '\\');
-    if (last_bs) {
-        *last_bs = '\0';
-    }
-}
-
-static char *read_full_line(const char *line, FILE *in, parse_state *state)
-{
-    char *result;
-    int multiline = 0;
-    result = strdup(line);
-    while (line_continues(result)) {
-        strip_continue(result);
-        char *l = NULL;
-        size_t ll = 0;
-        if (getline(&l, &ll, in) < 0) {
-            break;
-        }
-        current_lineno++;
-        multiline++;
-        result = realloc(result, strlen(result) + strlen(l) + 1);
-        strcat(result, l);
-        free(l);
-    }
-    while (strlen(result) && result[strlen(result) - 1] == '\r' || result[strlen(result) - 1] == '\n') {
-        result[strlen(result) - 1] = '\0';
-    }
-    if (multiline && OUTPUT_ACTIVE(state)) {
-        fprintf(state->out, "# %d \"%s\"\n", current_lineno, current_file);
-    }
-    return result;
-}
-
 static void add_if_frame(parse_state *state)
 {
     struct if_frame *new_if_frame = calloc(1, sizeof *new_if_frame);
@@ -141,8 +99,10 @@ static void add_if_frame(parse_state *state)
 static void mark_true(parse_state *state, const int truth)
 {
     state->top_if->is_true = 0;
+    output_active = 0;
     if (!state->top_if->truth_found) {
         state->top_if->is_true = truth;
+        output_active = truth;
         state->top_if->truth_found = truth;
     }
 }
@@ -152,18 +112,19 @@ static void handle_ifdef(const char *line, parse_state *state, const int invert)
     if (state->top_if->masked) {
         return;
     }
-    token_state s = {};
-    get_token(line, strlen(line), &s);
-    const int defined = defines_get(state->defs, s.tok) ? 1 : 0;
+    token_state ts;
+    set_token_string(&ts, line);
+    const token t = get_token(&ts);
+    const int defined = defines_get(state->defs, t.tok) ? 1 : 0;
     mark_true(state, invert ? !defined : defined);
 }
 
-static void handle_if(const char *line, FILE *in, parse_state *state)
+static void handle_if(const char *line, parse_state *state)
 {
     if (state->top_if->masked) {
         return;
     }
-    const char *condition = read_full_line(line, in, state);
+    const char *condition = line;
     mark_true(state, resolve_condition(condition, state));
 }
 
@@ -182,30 +143,31 @@ static void handle_endif(parse_state *state)
     }
     struct if_frame *i = state->top_if;
     state->top_if = state->top_if->next;
+    output_active = !state->top_if || (state->top_if->is_true && !state->top_if->masked);
     free(i);
 }
 
 static void handle_include(const char *line, parse_state *state)
 {
-    token_state s = {};
+    token_state ts;
+    set_token_string(&ts, line);
     char filename[256] = {};
-    const size_t line_len = strlen(line);
 
-    get_token(line, line_len, &s);
-    if (s.type == TOK_STR) {
-        if (!decode_str(s.tok, filename, sizeof(filename))) {
-            die("Unable to decode filename %s", s.tok);
+    token t = get_token(&ts);
+    if (t.type == TOK_STR) {
+        if (!decode_str(t.tok, filename, sizeof(filename))) {
+            die("Unable to decode filename %s", t.tok);
         }
-    } else if (s.type == '<') {
+    } else if (t.type == '<') {
         for (;;) {
-            const int cont = get_token(line, line_len, &s);
-            if (s.type == '>') {
-                break;
-            }
-            snprintf(filename + strlen(filename), sizeof(filename) - strlen(filename), "%s", s.tok);
-            if (!cont) {
+            t = get_token(&ts);
+            if (t.type == EOF) {
                 die("#include unterminated filename %s", line);
             }
+            if (t.type == '>') {
+                break;
+            }
+            snprintf(filename + strlen(filename), sizeof(filename) - strlen(filename), "%s", t.tok);
         }
     } else {
         die("#include unrecognized filename %s", line);
@@ -221,7 +183,7 @@ static void handle_include(const char *line, parse_state *state)
     process_file(filename, in, state->out, state);
     current_file = existing_file;
     current_lineno = existing_line;
-    fprintf(state->out, "# %d \"%s\"\n", current_lineno, current_file);
+    fprintf(state->out, "# %d \"%s\"\n", current_lineno + 1, current_file);
 }
 
 int span_parens(const char *p)
@@ -242,21 +204,22 @@ int span_parens(const char *p)
     return i;
 }
 
-static void handle_define(const char *line, FILE *in, parse_state *state)
+static void handle_define(const char *line, parse_state *state)
 {
     char *name = NULL;
     char *args = NULL;
 
-    token_state s = {};
-    get_token(line, strlen(line), &s);
-    if (s.type != TOK_ID && !IS_KEYWORD(s.type)) {
+    token_state ts;
+    set_token_string(&ts, line);
+    const token t = get_token(&ts);
+    if (t.type != TOK_ID && !IS_KEYWORD(t.type)) {
         die("#define must be an identifier: %s", line);
     }
-    name = strdup(s.tok);
+    name = strdup(t.tok);
 
-    const char *p = line + s.ind;
+    // todo xxx don't use ind directly
+    const char *p = line + ts.ind;
     if (*p == '(') {
-        // todo handle parens in macro args
         const char *q = p + span_parens(p);
         if (*q != ')') {
             die("#define missing closing parens: %s", line);
@@ -267,32 +230,30 @@ static void handle_define(const char *line, FILE *in, parse_state *state)
     }
     p += strspn(p, " \t");
 
-    char *full_line = read_full_line(p, in, state);
-
-    defines_add(state->defs, name, args, full_line);
+    defines_add(state->defs, name, args, p);
     free(name);
     free(args);
-    free(full_line);
 }
 
 static void handle_undef(const char *line, const parse_state *state)
 {
-    token_state s = {};
-    get_token(line, strlen(line), &s);
-    if (s.type != TOK_ID && !IS_KEYWORD(s.type)) {
+    token_state ts = {};
+    set_token_string(&ts, line);
+    const token t = get_token(&ts);
+    if (t.type != TOK_ID && !IS_KEYWORD(t.type)) {
         die("#undef must be an identifier: %s", line);
     }
-    defines_remove(state->defs, s.tok);
+    defines_remove(state->defs, t.tok);
 }
 
-static void handle_pragma(const char *line, FILE *in, const parse_state *state)
+static void handle_pragma(const char *line, const parse_state *state)
 {
     char buf[16];
     const char *end = line + strcspn(line, WHITESPACE);
     snprintf(buf, sizeof(buf), "%.*s", (int) (end - line), line);
     if (strcmp(buf, "once") == 0) {
         if (hashmap_get(state->once_filenames, state->current_filename)) {
-            fseek(in, 0, SEEK_END);
+            fseek(state->ts.f, 0, SEEK_END);
         } else {
             const char *key = strdup(state->current_filename);
             hashmap_add(state->once_filenames, key, key);
@@ -302,71 +263,73 @@ static void handle_pragma(const char *line, FILE *in, const parse_state *state)
     }
 }
 
-static void process_directive(const char *line, const size_t line_len, FILE *in, parse_state *state)
+static void process_directive(token_state *ts, parse_state *state)
 {
     char cmd[64];
-    const char *w = line + strspn(line, " \t");
-    w += 1;
-    w += strspn(w, " \t");
-    const int len = strspn(w, LOWER);
-    snprintf(cmd, sizeof(cmd), "%.*s", len, w);
-    w += len;
-    w += strspn(w, " \t");
+    const char *remaining = ts->line + strspn(ts->line, " \t");
+    remaining += 1; // '#'
+    remaining += strspn(remaining, " \t");
+    const int len = strspn(remaining, LOWER);
+    snprintf(cmd, sizeof(cmd), "%.*s", len, remaining);
+    remaining += len;
+    remaining += strspn(remaining, " \t");
 
     if (strcmp(cmd, "ifdef") == 0) {
         add_if_frame(state);
-        handle_ifdef(w, state, 0);
+        handle_ifdef(remaining, state, 0);
     } else if (strcmp(cmd, "ifndef") == 0) {
         add_if_frame(state);
-        handle_ifdef(w, state, 1);
+        handle_ifdef(remaining, state, 1);
     } else if (strcmp(cmd, "endif") == 0) {
         handle_endif(state);
-        fprintf(state->out, "# %d \"%s\"\n", current_lineno, current_file);
+        if (output_active) {
+            fprintf(state->out, "# %d \"%s\"\n", current_lineno + 1, current_file);
+        }
     } else if (strcmp(cmd, "include") == 0) {
-        if (OUTPUT_ACTIVE(state)) {
-            handle_include(w, state);
+        if (output_active) {
+            handle_include(remaining, state);
         }
     } else if (strcmp(cmd, "define") == 0) {
-        if (OUTPUT_ACTIVE(state)) {
-            handle_define(w, in, state);
+        if (output_active) {
+            handle_define(remaining, state);
         }
     } else if (strcmp(cmd, "undef") == 0) {
-        if (OUTPUT_ACTIVE(state)) {
-            handle_undef(w, state);
+        if (output_active) {
+            handle_undef(remaining, state);
         }
     } else if (strcmp(cmd, "if") == 0) {
         add_if_frame(state);
-        handle_if(w, in, state);
+        handle_if(remaining, state);
     } else if (strcmp(cmd, "elif") == 0) {
-        handle_if(w, in, state);
+        handle_if(remaining, state);
     } else if (strcmp(cmd, "else") == 0) {
         handle_else(state);
     } else if (strcmp(cmd, "pragma") == 0) {
-        handle_pragma(w, in, state);
-    } else if (OUTPUT_ACTIVE(state)) {
+        handle_pragma(remaining, state);
+    } else if (output_active) {
         fprintf(stderr, "Warning: unrecognized directive %s\n", cmd);
     }
 }
 
-static void process_tokens(const char *line, const size_t line_len, parse_state *state)
+static void process_tokens(token_state *ts, parse_state *state)
 {
-    token_state *s = &state->ts;
-
-    int cont = 1;
-    while (cont) {
-        cont = get_token(line, line_len, s);
-        const def *d = defines_get(state->defs, s->tok);
+    for (;;) {
+        const token t = get_token(ts);
+        if (t.type == EOF || (t.type == TOK_ERR && ts->line_is_directive)) {
+            return;
+        }
+        const def *d = defines_get(state->defs, t.tok);
         if (d) {
             if (d->args) {
                 str_t result = {0};
-                handle_macro(d, state->defs, s, &result);
+                handle_macro(d, state->defs, ts, &result);
                 fprintf(state->out, "%s", result.s);
                 free_str(&result);
             } else {
                 fprintf(state->out, "%s", d->replace);
             }
         } else {
-            fprintf(state->out, "%s", s->tok);
+            fprintf(state->out, "%s", t.tok);
         }
     }
 }

@@ -6,7 +6,7 @@
 #include <string.h>
 
 #include "hashmap.h"
-#include "lex.h"
+#include "pp_toker.h"
 
 // ReSharper disable CppDFANullDereference
 
@@ -38,25 +38,23 @@ int defines_remove(const defines *defs, const char *name)
     return 0;
 }
 
-static int skip_parens(token_state *s)
+static void skip_parens(token_state *ts)
 {
-    int cont = 1;
     int parens_count = 1;
-    while (cont && parens_count > 0) {
-        cont = get_token(NULL, 0, s);
-        if (s->type == '(') {
+    while (!TOKEN_STATE_DONE(ts) && parens_count > 0) {
+        const token t = get_token(ts);
+        if (t.type == '(') {
             parens_count++;
         }
-        if (s->type == ')') {
+        if (t.type == ')') {
             parens_count--;
         }
     }
-    return cont;
 }
 
 static char **parse_args(const char *name, const char *args)
 {
-    token_state s = {};
+    token_state ts;
     char **result = NULL;
     int comma_counter = 0;
     size_t n = 0;
@@ -65,20 +63,21 @@ static char **parse_args(const char *name, const char *args)
         return NULL;
     }
 
+    set_token_string(&ts, args);
     const size_t len = strlen(args);
     for (;;) {
-        int cont = get_token(args, len, &s);
-        if (!len || s.type == TOK_WS) {
+        const token t = get_token(&ts);
+        if (!len || t.type == TOK_WS) {
             // ignore
-        } else if (s.type == '(') {
+        } else if (t.type == '(') {
             // skip past parenthesized argument in args list
-            cont = skip_parens(&s);
-        } else if (s.type == ',') {
+            skip_parens(&ts);
+        } else if (t.type == ',') {
             if (comma_counter % 2 != 1) {
                 die("#define %s args extra comma in %s", name, args);
             }
             comma_counter++;
-        } else if (s.type == TOK_ID || IS_KEYWORD(s.type) || s.type == TOK_ELLIPSIS) {
+        } else if (t.type == TOK_ID || IS_KEYWORD(t.type) || t.type == TOK_ELLIPSIS) {
             if (comma_counter % 2 != 0) {
                 die("#define %s args missing comma in %s", name, args);
             }
@@ -86,11 +85,11 @@ static char **parse_args(const char *name, const char *args)
             if (n % 5 == 0) {
                 result = realloc(result, sizeof(*result) * (n + 6));
             }
-            result[n++] = strdup(s.tok);
+            result[n++] = strdup(t.tok);
         } else {
-            die("#define %s(%s) bad arg \"%s\"", name, args, s.tok);
+            die("#define %s(%s) bad arg \"%s\"", name, args, t.tok);
         }
-        if (!cont) {
+        if (TOKEN_STATE_DONE(&ts)) {
             break;
         }
     }

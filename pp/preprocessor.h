@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 #include "defs.h"
-#include "lex.h"
+#include "pp_toker.h"
 
 struct if_frame {
   struct if_frame *next;
@@ -20,7 +20,5 @@ typedef struct {
   hashmap *once_filenames;
   token_state ts;
 } parse_state;
-
-#define OUTPUT_ACTIVE(state) (!(state)->top_if || (state)->top_if->is_true)
 
 extern void process_file(const char *filename, FILE *in, FILE *out, parse_state *existing_state);

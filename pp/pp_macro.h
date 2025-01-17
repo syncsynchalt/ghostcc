@@ -1,7 +1,7 @@
 #pragma once
 
 #include "defs.h"
-#include "lex.h"
+#include "pp_toker.h"
 #include "str.h"
 
 /**
@@ -12,7 +12,7 @@
  *
  * @param d the #define macro in question
  * @param defs all known #defines
- * @param s the lexer state (includes the string we are parsing and current position)
+ * @param ts the lexer state (includes the string we are parsing and current position)
  * @param out[in,out] the output string to add result to
  */
-extern void handle_macro(const def *d, const defines *defs, token_state *s, str_t *out);
+extern void handle_macro(const def *d, const defines *defs, token_state *ts, str_t *out);

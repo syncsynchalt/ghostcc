@@ -8,15 +8,14 @@
 #include "str.h"
 #include "subst.h"
 
-static int skip_ws(token_state *s)
+static token skip_ws(token_state *ts)
 {
-    while (!LINE_DONE(s, s->_line)) {
-        get_token(s->_line, s->_line_len, s);
-        if (s->type != TOK_WS) {
-            break;
+    for (;;) {
+        const token t = get_token(ts);
+        if (t.type != TOK_WS) {
+            return t;
         }
     }
-    return !LINE_DONE(s, s->_line);
 }
 
 static void trim_trailing_whitespace(str_t *str)
@@ -26,38 +25,39 @@ static void trim_trailing_whitespace(str_t *str)
     }
 }
 
-static str_t read_arg(token_state *s)
+static str_t read_arg(token t, token_state *ts)
 {
     str_t result = {0};
     int parens = 0;
     for (;;) {
-        if (s->type == '(') {
+        if (t.type == '(') {
             parens++;
         }
-        if (LINE_DONE(s, s->_line) || (parens == 0 && (s->type == ',' || s->type == ')'))) {
+        if (TOKEN_STATE_DONE(ts) || (parens == 0 && (t.type == ',' || t.type == ')'))) {
             break;
         }
-        if (parens && s->type == ')') {
+        if (parens && t.type == ')') {
             parens--;
         }
-        add_to_str(&result, s->tok);
-        get_token(s->_line, s->_line_len, s);
+        add_to_str(&result, t.tok);
+        t = get_token(ts);
     }
 
     return result;
 }
 
-void handle_macro(const def *d, const defines *defs, token_state *s, str_t *out)
+void handle_macro(const def *d, const defines *defs, token_state *ts, str_t *out)
 {
     char **extra_args = NULL;
     int extra_args_num = 0;
 
     // ensure we're looking at a macro
-    size_t check_ind = s->ind;
-    check_ind += strspn(s->_line + check_ind, WHITESPACE);
-    if (s->_line[check_ind] != '(') {
+    // xxx todo don't use ind directly
+    size_t check_ind = ts->ind;
+    check_ind += strspn(ts->line + check_ind, WHITESPACE);
+    if (ts->line[check_ind] != '(') {
         // Mis-fire, this is not a macro call. Substitute the string as-is.
-        add_to_str(out, s->tok);
+        add_to_str(out, d->name);
         return;
     }
 
@@ -71,62 +71,65 @@ void handle_macro(const def *d, const defines *defs, token_state *s, str_t *out)
         extra_args = calloc(1, (extra_args_num + 5) * sizeof(*extra_args));
     }
 
-    skip_ws(s); // skip to '('
+    token t = skip_ws(ts); // skip to '('
 
     // assign replacement value of each arg
     int arg;
     for (arg = 0; arg < num_args; ++arg) {
-        skip_ws(s);
-        str_t tmp = read_arg(s);
+        t = skip_ws(ts);
+        str_t tmp = read_arg(t, ts);
         trim_trailing_whitespace(&tmp);
         vals[arg] = subst_tokens(tmp.s, defs, NULL);
         free_str(&tmp);
         if (!vals[arg]) {
             die("Missing arg %d in macro %s", arg+1, d->name);
         }
-        if (s->type != ',' && s->type != ')') {
+        if (ts->last.type != ',' && ts->last.type != ')') {
             die("Unexpected end of macro %s after arg %d", d->name, arg+1);
         }
-        if (s->type == ')' && arg+1 != num_args) {
+        if (ts->last.type == ')' && arg+1 != num_args) {
             die("Unexpected end of args in macro %s", d->name);
         }
     }
 
-    if (extra_args && s->type != ')') {
-        skip_ws(s);
+    if (extra_args && ts->last.type != ')') {
+        t = skip_ws(ts);
         for (;;) {
             if (extra_args_num && extra_args_num % 5 == 0) {
                 extra_args = realloc(extra_args, (extra_args_num + 5) * sizeof(*extra_args));
             }
-            const str_t tmp = read_arg(s);
+            const str_t tmp = read_arg(t, ts);
             extra_args[extra_args_num++] = subst_tokens(tmp.s, defs, NULL);
             free_str(&tmp);
-            if (s->type == ')' || LINE_DONE(s, s->_line)) {
+            if (ts->last.type == ')' || TOKEN_STATE_DONE(ts)) {
                 break;
             }
-            extra_args[extra_args_num++] = strdup(s->tok);
-            get_token(s->_line, s->_line_len, s);
+            extra_args[extra_args_num++] = strdup(ts->last.tok);
+            t = get_token(ts);
         }
     }
 
-    if (s->type != ')') {
+    if (ts->last.type != ')') {
+        if (TOKEN_STATE_DONE(ts)) {
+            die("Unexpected end of args in macro %s", d->name);
+        }
         die("Unexpected args past %d in macro %s", arg + extra_args_num, d->name);
     }
 
     // perform macro replacement
     int i = 0, j = 0, k = 0;
     char *substituted_replace = subst_tokens(d->replace, defs, d->name);
-    const size_t sr_len = strlen(substituted_replace);
     token_state sub_ts = {0};
-    while (!LINE_DONE(&sub_ts, substituted_replace)) {
-        get_token(substituted_replace, sr_len, &sub_ts);
-        const char *w = sub_ts.tok;
+    set_token_string(&sub_ts, substituted_replace);
+    while (!TOKEN_STATE_DONE(&sub_ts)) {
+        const token tt = get_token(&sub_ts);
+        const char *w = tt.tok;
         int matched = -1;
 
         // handle the "#" operator
         if (strcmp(w, "#") == 0) {
             skip_ws(&sub_ts);
-            const char *ww = sub_ts.tok;
+            const char *ww = sub_ts.last.tok;
             // ensure next token is a macro arg
             for (j = 0; j < num_args; ++j) {
                 if (strcmp(ww, d->args[j]) == 0) {
@@ -149,7 +152,7 @@ void handle_macro(const def *d, const defines *defs, token_state *s, str_t *out)
             trim_trailing_whitespace(out);
 
             skip_ws(&sub_ts);
-            const char *ww = sub_ts.tok;
+            const char *ww = sub_ts.last.tok;
             // check if next token is an arg
             for (j = 0; j < num_args; ++j) {
                 if (strcmp(ww, d->args[j]) == 0) {

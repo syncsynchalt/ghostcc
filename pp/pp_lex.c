@@ -1,8 +1,8 @@
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 #include "pp_lex.h"
 #include "pp_macro.h"
-#include "lex.h"
+#include "pp_toker.h"
 #include "subst.h"
 
 ast_node *pp_parse_result;
@@ -42,19 +42,23 @@ int yylex(void)
     if (!scratch) {
         scratch = subst_tokens(pp_parse_target, pp_parse_defs, NULL);
         scratch_len = strlen(scratch);
+        set_token_string(&lex_ts, scratch);
     }
+    token t;
     do {
-        if (lex_ts.ind >= scratch_len) {
-            yylval = NULL;
-            return -1;
-        }
-        get_token(scratch, scratch_len, &lex_ts);
-    } while (lex_ts.type == TOK_WS);
+        t = get_token(&lex_ts);
+    } while (t.type == TOK_WS);
 
-    pp_parse_line = lex_ts._line;
-    pp_parse_line_index = lex_ts.pos;
-    yylval = make_ast_node(&lex_ts, NULL, NULL);
-    return lex_ts.type;
+    if (t.type == EOF) {
+        yylval = NULL;
+        return -1;
+    }
+
+    pp_parse_line = lex_ts.line;
+    pp_parse_line_index = lex_ts.ind - strlen(lex_ts.last.tok);
+    pp_parse_line_index = pp_parse_line_index < 0 ? 0 : pp_parse_line_index;
+    yylval = make_ast_node(t, NULL, NULL);
+    return t.type;
 }
 
 void yyerror(const char *s)

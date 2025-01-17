@@ -22,4 +22,4 @@ typedef struct _ast_node {
     struct _ast_node *right;
 } ast_node;
 
-extern ast_node *make_ast_node(const token_state *tok, ast_node *left, ast_node *right);
+extern ast_node *make_ast_node(const token t, ast_node *left, ast_node *right);

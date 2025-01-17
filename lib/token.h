@@ -73,6 +73,7 @@ typedef enum {
     TOK_LINE_COMMENT,
 
     TOK_ERR = 1000,
+    TOK_DIRECTIVE,
 } token_type;
 
 #define IS_KEYWORD(t) (t >= 600 && t < 700)

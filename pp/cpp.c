@@ -70,6 +70,7 @@ int main(const int argc, char **argv)
     if (!out) {
         die("Can't open %s for writing: %s", outfile, strerror(errno));
     }
+    output = out;
 
     defines *defs = defines_init();
 
