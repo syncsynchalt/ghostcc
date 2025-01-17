@@ -5,7 +5,7 @@
 typedef struct {
     char *name; ///< the name of the #define
     char **args; ///< macro function arguments (or null for non-macro)
-    char **replace; ///< replacement tokens for the #define (or null if no replacement)
+    char *replace; ///< replacement string for the #define (or null if no replacement)
 } def;
 
 typedef struct {

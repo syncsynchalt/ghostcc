@@ -228,7 +228,7 @@ int get_token(const char *line, const size_t line_len, token_state *token)
             // preprocessor line continuation: ending a line with backslash
             len = strspn(p + 1, "\r\n");
             if (token->ind + 1 + len != token->_line_len) {
-                return die_at(token, token->ind, "backslash (not at end of line)");
+                return copy_token(token, '\\', 1);
             }
             return copy_token(token, TOK_PP_CONTINUE, token->_line_len - token->ind);
 

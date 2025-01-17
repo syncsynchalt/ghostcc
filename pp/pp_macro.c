@@ -1,9 +1,12 @@
 #include "pp_macro.h"
-#include <string.h>
+
+#include <common.h>
 #include <ctype.h>
+#include <string.h>
 #include "die.h"
 #include "lex.h"
 #include "str.h"
+#include "subst.h"
 
 static int skip_ws(token_state *s)
 {
@@ -16,10 +19,47 @@ static int skip_ws(token_state *s)
     return !LINE_DONE(s, s->_line);
 }
 
-void handle_macro(const def *d, token_state *s, str_t *out)
+static void trim_trailing_whitespace(str_t *str)
+{
+    while (str->end && isspace(str->s[str->end-1])) {
+        str->s[--str->end] = '\0';
+    }
+}
+
+static str_t read_arg(token_state *s)
+{
+    str_t result = {0};
+    int parens = 0;
+    for (;;) {
+        if (s->type == '(') {
+            parens++;
+        }
+        if (LINE_DONE(s, s->_line) || (parens == 0 && (s->type == ',' || s->type == ')'))) {
+            break;
+        }
+        if (parens && s->type == ')') {
+            parens--;
+        }
+        add_to_str(&result, s->tok);
+        get_token(s->_line, s->_line_len, s);
+    }
+
+    return result;
+}
+
+void handle_macro(const def *d, const defines *defs, token_state *s, str_t *out)
 {
     char **extra_args = NULL;
     int extra_args_num = 0;
+
+    // ensure we're looking at a macro
+    size_t check_ind = s->ind;
+    check_ind += strspn(s->_line + check_ind, WHITESPACE);
+    if (s->_line[check_ind] != '(') {
+        // Mis-fire, this is not a macro call. Substitute the string as-is.
+        add_to_str(out, s->tok);
+        return;
+    }
 
     // make room for tracking replacement value of each arg
     int num_args;
@@ -31,37 +71,41 @@ void handle_macro(const def *d, token_state *s, str_t *out)
         extra_args = calloc(1, (extra_args_num + 5) * sizeof(*extra_args));
     }
 
+    skip_ws(s); // skip to '('
+
     // assign replacement value of each arg
-    skip_ws(s);
-    if (s->type != '(') {
-        die("Macro args for macro %s missing", d->name);
-    }
-    skip_ws(s);
     int arg;
     for (arg = 0; arg < num_args; ++arg) {
-        vals[arg] = strdup(s->tok);
         skip_ws(s);
+        str_t tmp = read_arg(s);
+        trim_trailing_whitespace(&tmp);
+        vals[arg] = subst_tokens(tmp.s, defs, NULL);
+        free_str(&tmp);
+        if (!vals[arg]) {
+            die("Missing arg %d in macro %s", arg+1, d->name);
+        }
         if (s->type != ',' && s->type != ')') {
-            die("Unexpected token %s in macro %s arg %d", s->tok, d->name, arg+1);
+            die("Unexpected end of macro %s after arg %d", d->name, arg+1);
         }
         if (s->type == ')' && arg+1 != num_args) {
             die("Unexpected end of args in macro %s", d->name);
         }
-        if (s->type != ')') {
-            skip_ws(s);
-        }
     }
 
     if (extra_args && s->type != ')') {
+        skip_ws(s);
         for (;;) {
             if (extra_args_num && extra_args_num % 5 == 0) {
                 extra_args = realloc(extra_args, (extra_args_num + 5) * sizeof(*extra_args));
             }
-            extra_args[extra_args_num++] = strdup(s->tok);
-            get_token(s->_line, s->_line_len, s);
-            if (s->type == ')' || s->ind >= s->_line_len) {
+            const str_t tmp = read_arg(s);
+            extra_args[extra_args_num++] = subst_tokens(tmp.s, defs, NULL);
+            free_str(&tmp);
+            if (s->type == ')' || LINE_DONE(s, s->_line)) {
                 break;
             }
+            extra_args[extra_args_num++] = strdup(s->tok);
+            get_token(s->_line, s->_line_len, s);
         }
     }
 
@@ -71,23 +115,18 @@ void handle_macro(const def *d, token_state *s, str_t *out)
 
     // perform macro replacement
     int i = 0, j = 0, k = 0;
-    for (i = 0; d->replace[i]; i++) {
-        const char *w = d->replace[i];
-        char *ww, *www;
+    char *substituted_replace = subst_tokens(d->replace, defs, d->name);
+    const size_t sr_len = strlen(substituted_replace);
+    token_state sub_ts = {0};
+    while (!LINE_DONE(&sub_ts, substituted_replace)) {
+        get_token(substituted_replace, sr_len, &sub_ts);
+        const char *w = sub_ts.tok;
         int matched = -1;
 
         // handle the "#" operator
         if (strcmp(w, "#") == 0) {
-            // find next non-space token
-            for (k = i+1; d->replace[k]; k++) {
-                if (!isspace(d->replace[k][0])) {
-                    break;
-                }
-            }
-            ww = d->replace[k];
-            if (!ww) {
-                die("String operator not followed by arg");
-            }
+            skip_ws(&sub_ts);
+            const char *ww = sub_ts.tok;
             // ensure next token is a macro arg
             for (j = 0; j < num_args; ++j) {
                 if (strcmp(ww, d->args[j]) == 0) {
@@ -99,32 +138,18 @@ void handle_macro(const def *d, token_state *s, str_t *out)
             }
 
             // quote the arg replacement value and add it to output
-            www = quote_str(vals[matched]);
+            char *www = quote_str(vals[matched]);
             add_to_str(out, www);
             free(www);
-            i = k;
             continue;
         }
 
         // handle the "##" operator
-        // todo - "The resulting token is available for further macro replacement"
         if (strcmp(w, "##") == 0) {
-            // delete trailing whitespace in output
-            while (out->end > 0 && isspace(out->s[out->end-1])) {
-                out->s[--out->end] = '\0';
-            }
+            trim_trailing_whitespace(out);
 
-            // find next non-space token
-            for (k = i+1; d->replace[k]; k++) {
-                if (!isspace(d->replace[k][0])) {
-                    break;
-                }
-            }
-            ww = d->replace[k];
-            if (!ww) {
-                die("Concat operator not followed by arg");
-            }
-
+            skip_ws(&sub_ts);
+            const char *ww = sub_ts.tok;
             // check if next token is an arg
             for (j = 0; j < num_args; ++j) {
                 if (strcmp(ww, d->args[j]) == 0) {
@@ -138,7 +163,8 @@ void handle_macro(const def *d, token_state *s, str_t *out)
                 // otherwise add the next token as-is (concatenated with previous output)
                 add_to_str(out, ww);
             }
-            i = k;
+
+            // todo - "The resulting token is available for further macro replacement"
             continue;
         }
 
@@ -162,6 +188,7 @@ void handle_macro(const def *d, token_state *s, str_t *out)
             add_to_str(out, w);
         }
     }
+    free(substituted_replace);
 
     // free allocated memory
     for (num_args = 0; d->args[num_args]; ++num_args) {

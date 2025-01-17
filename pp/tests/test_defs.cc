@@ -29,10 +29,7 @@ TEST(DefsTest, AddSubst)
     ASSERT_TRUE(d);
     ASSERT_STREQ("FOO", d->name);
     ASSERT_EQ(NULL, d->args);
-    const char *expected[] = {"a", " ", "=", " ", "b", " ", "+", " ", "c", "->", "d", NULL};
-    for (int i = 0; i < sizeof(expected) / sizeof(*expected); i++) {
-        ASSERT_STREQ(expected[i], d->replace[i]);
-    }
+    ASSERT_STREQ("a = b + c->d", d->replace);
     defines_destroy(defs);
 }
 
@@ -55,8 +52,7 @@ TEST(DefsTest, AddMacro)
     ASSERT_STREQ("FOO", d->name);
     const char *e_args[] = {"a", "b", "c", NULL};
     ASSERT_EQ(make_vector(e_args), make_vector(d->args));
-    const char *e_replace[] = {"aa", " ", "=", " ", "a", ";", " ", "bb", " ", "=", " ", "b", ";", NULL};
-    ASSERT_EQ(make_vector(e_replace), make_vector(d->replace));
+    ASSERT_STREQ("aa = a; bb = b;", d->replace);
 
     defines_destroy(defs);
 }

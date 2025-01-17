@@ -11,14 +11,13 @@
 // ReSharper disable CppDFANullDereference
 
 static char **parse_args(const char *name, const char *args);
-static char **parse_replace(const char *replace);
 
 void defines_add(const defines *defs, const char *name, const char *args, const char *replace)
 {
     def *d = calloc(1, sizeof(*d));
     d->name = strdup(name);
     d->args = parse_args(name, args);
-    d->replace = parse_replace(replace);
+    d->replace = replace ? strdup(replace) : NULL;
 
     hashmap_add(defs->h, name, d);
 }
@@ -32,9 +31,7 @@ int defines_remove(const defines *defs, const char *name)
         for (i = 0; d->args && d->args[i]; i++) {
             free(d->args[i]);
         }
-        for (i = 0; d->replace && d->replace[i]; i++) {
-            free(d->replace[i]);
-        }
+        free(d->replace);
         free((void *)d);
         return 1;
     }
@@ -98,33 +95,6 @@ static char **parse_args(const char *name, const char *args)
         }
     }
     if (result && n) {
-        result[n] = NULL;
-    }
-    return result;
-}
-
-static char **parse_replace(const char *replace)
-{
-    token_state s = {};
-    char **result = NULL;
-    size_t n = 0;
-
-    if (!replace) {
-        return NULL;
-    }
-
-    const size_t len = strlen(replace);
-    for (;;) {
-        const int cont = get_token(replace, len, &s);
-        if (n % 5 == 0) {
-            result = realloc(result, sizeof(*result) * (n + 6));
-        }
-        result[n++] = strdup(s.tok);
-        if (!cont) {
-            break;
-        }
-    }
-    if (n) {
         result[n] = NULL;
     }
     return result;
@@ -571,9 +541,7 @@ void defines_destroy(defines *defs)
         for (i = 0; d->args && d->args[i]; i++) {
             free((void *) d->args[i]);
         }
-        for (i = 0; d->replace && d->replace[i]; i++) {
-            free((void *) d->replace[i]);
-        }
+        free(d->replace);
         free(d);
     }
     free(defs);

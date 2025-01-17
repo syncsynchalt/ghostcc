@@ -41,7 +41,7 @@ static void handle_defined(token_state *ts, str_t *out, const defines *defs)
     }
 }
 
-char *subst_tokens(const char *s, const defines *defs)
+char *subst_tokens(const char *s, const defines *defs, const char *ignore_macro)
 {
     token_state ts = {0};
     const size_t slen = strlen(s);
@@ -50,14 +50,15 @@ char *subst_tokens(const char *s, const defines *defs)
     const def *d = NULL;
     while (!LINE_DONE(&ts, s)) {
         get_token(s, slen, &ts);
-        if ((d = defines_get(defs, ts.tok))) {
+        if (ignore_macro && strcmp(ignore_macro, ts.tok) == 0) {
+            // ignore this macro (because we're already in it), replace the token as-is
+            add_to_str(&result, ts.tok);
+        } else if ((d = defines_get(defs, ts.tok))) {
             if (d->args) {
-                handle_macro(d, &ts, &result);
+                handle_macro(d, defs, &ts, &result);
+                // xxx after handling the macro, consider how to re-process again?
             } else {
-                int i = 0;
-                while (d->replace && d->replace[i]) {
-                    add_to_str(&result, d->replace[i++]);
-                }
+                add_to_str(&result, d->replace);
             }
         } else if (strcmp(ts.tok, "defined") == 0) {
             // special case: handle the `defined(SYMBOL)` pseudo-macro

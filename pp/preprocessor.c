@@ -204,11 +204,11 @@ static void handle_include(const char *line, parse_state *state)
             }
             snprintf(filename + strlen(filename), sizeof(filename) - strlen(filename), "%s", s.tok);
             if (!cont) {
-                die("#define unterminated filename %s", line);
+                die("#include unterminated filename %s", line);
             }
         }
     } else {
-        die("#define unrecognized filename %s", line);
+        die("#include unrecognized filename %s", line);
     }
 
     if (!resolve_include_path(filename, sizeof(filename), state->include_paths)) {
@@ -359,14 +359,11 @@ static void process_tokens(const char *line, const size_t line_len, parse_state 
         if (d) {
             if (d->args) {
                 str_t result = {0};
-                handle_macro(d, s, &result);
+                handle_macro(d, state->defs, s, &result);
                 fprintf(state->out, "%s", result.s);
-                free(result.s);
+                free_str(&result);
             } else {
-                int i = 0;
-                while (d->replace && d->replace[i]) {
-                    fprintf(state->out, "%s", d->replace[i++]);
-                }
+                fprintf(state->out, "%s", d->replace);
             }
         } else {
             fprintf(state->out, "%s", s->tok);

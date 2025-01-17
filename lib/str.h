@@ -7,3 +7,5 @@ typedef struct {
 } str_t;
 
 extern void add_to_str(str_t *str, const char *s);
+
+#define free_str(str) free((str)->s);
