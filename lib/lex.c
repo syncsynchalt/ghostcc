@@ -9,10 +9,10 @@
 // map of ASCII character to what token type they might start
 static token_type tok_start[128] = {
     TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR,
-    TOK_ERR, TOK_WS,  TOK_WS,  TOK_WS,  TOK_ERR, TOK_WS,  TOK_ERR, TOK_ERR,
+    TOK_ERR, TOK_WS,  '\n',    TOK_WS,  TOK_ERR, TOK_WS,  TOK_ERR, TOK_ERR,
     TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR,
     TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR, TOK_ERR,
-    TOK_WS,  '!',     TOK_STR, TOK_PP_STR, TOK_ERR, '%',  '&',     TOK_CHA,
+    TOK_WS,  '!',     TOK_STR, '#', TOK_ERR, '%',  '&',     TOK_CHA,
     '(',     ')',     '*',     '+',     ',',     '-',     '.',     '/',
     TOK_NUM, TOK_NUM, TOK_NUM, TOK_NUM, TOK_NUM, TOK_NUM, TOK_NUM, TOK_NUM,
     TOK_NUM, TOK_NUM, ':',     ';',     '<',     '=',     '>',     '?',
@@ -83,7 +83,7 @@ static token eat_err(int (*getch)(void *), int (*ungetch)(int, void *), void *pa
     int c;
     for (;;) {
         c = getch(param);
-        if (c == EOF || c == DIRECTIVE_SIGIL || ((unsigned char)c < 128 && tok_start[c] != TOK_ERR)) {
+        if (c == EOF || ((unsigned char)c < 128 && tok_start[c] != TOK_ERR)) {
             break;
         }
         add_token_buf_chr(c);
@@ -123,12 +123,20 @@ token read_token(int (*getch)(void *), int (*ungetch)(int c, void *param), void 
             // unrecognized symbol
             return eat_err(getch, ungetch, param, token_buf);
 
+        case '\n':
+            // whitespace
+            t.type = TOK_WS;
+            break;
+
         case TOK_WS:
             // whitespace
             for (;;) {
                 c = getch(param);
                 if (isspace(c)) {
                     add_token_buf_chr(c);
+                    if (c == '\n') {
+                        break;
+                    }
                 } else {
                     ungetch(c, param);
                     break;
@@ -242,15 +250,15 @@ token read_token(int (*getch)(void *), int (*ungetch)(int c, void *param), void 
             add_token_buf_chr(c);
             break;
 
-        case TOK_PP_STR:
+        case '#':
             // preprocessor tokens, "#" or "##"
             c = getch(param);
-            t.type = TOK_PP_STR;
             if (c == '#') {
                 add_token_buf_chr(c);
                 t.type = TOK_PP_COMBINE;
             } else {
                 ungetch(c, param);
+                t.type = '#';
             }
             break;
 

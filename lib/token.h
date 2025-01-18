@@ -66,8 +66,7 @@ typedef enum {
     TOK_XOR_ASSIGN,
 
     // pre-processor only
-    TOK_PP_STR = 900,
-    TOK_PP_COMBINE,
+    TOK_PP_COMBINE = 900,
     TOK_PP_CONTINUE,
     TOK_COMMENT,
     TOK_LINE_COMMENT,

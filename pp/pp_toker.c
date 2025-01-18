@@ -20,6 +20,7 @@ void set_token_string(token_state *ts, const char *s)
     ts->filename = NULL;
     ts->line_is_directive = 0;
     strcpy(ts->token_buf, "");
+    ts->unget_ind = 0;
 }
 
 void set_token_file(token_state *ts, FILE *f, const char *filename)
@@ -32,6 +33,7 @@ void set_token_file(token_state *ts, FILE *f, const char *filename)
     ts->filename = filename;
     ts->line_is_directive = 0;
     strcpy(ts->token_buf, "");
+    ts->unget_ind = 0;
 }
 
 static void read_line_from_file(token_state *ts)
@@ -51,25 +53,23 @@ static void read_line_from_file(token_state *ts)
     if (ts->line[strspn(ts->line, " \t")] == '#') {
         ts->line_is_directive = 1;
         read_full_directive(ts);
+    } else {
+        ts->line_is_directive = 0;
     }
 }
 
 static int token_string_getc(token_state *ts)
 {
-    if (ts->line_is_directive) {
-        return DIRECTIVE_SIGIL;
+    if (ts->unget_ind) {
+        return ts->unget_buf[--ts->unget_ind];
     }
+
     if (ts->ind >= ts->end) {
         if (ts->f) {
             if (feof(ts->f)) {
                 return EOF;
             }
             read_line_from_file(ts);
-            // ReSharper disable once CppDFAConstantConditions
-            if (ts->line_is_directive) {
-                // ReSharper disable once CppDFAUnreachableCode
-                return DIRECTIVE_SIGIL;
-            }
         } else {
             return EOF;
         }
@@ -82,11 +82,11 @@ static int token_string_ungetc(int c, token_state *ts)
     if (c == EOF) {
         return EOF;
     }
-    if (ts->line_is_directive) {
-        return 0;
-    }
-    if (ts->line[--ts->ind] != c) {
-        die("illegal ungetc (%c vs %c)", ts->line[ts->ind], c);
+    if (ts->ind && ts->line[ts->ind - 1] == c) {
+        ts->ind--;
+    } else {
+        const char buf[2] = { c, '\0' };
+        push_back_token_data(ts, buf);
     }
     return 0;
 }
@@ -98,13 +98,23 @@ token get_token(token_state *ts)
     return ts->last;
 }
 
+void push_back_token_data(token_state *ts, const char *data)
+{
+    const size_t len = strlen(data);
+    if (ts->unget_ind + len >= TOKEN_BUF_SZ) {
+        die("Tried to push too much token data back");
+    }
+    int i;
+    for (i = len-1; i >= 0; i--) {
+        ts->unget_buf[ts->unget_ind++] = data[i];
+    }
+}
+
 static int directive_continues(const token_state *ts)
 {
     const char *last_bs = strrchr(ts->line, '\\');
     return last_bs && *(last_bs + 1 + strspn(last_bs + 1, "\r\n")) == '\0';
 }
-
-extern FILE *output;
 
 static void read_full_directive(token_state *ts)
 {
@@ -137,18 +147,6 @@ static void read_full_directive(token_state *ts)
     if (multiline && output_active && output) {
         fprintf(output, "# %d \"%s\"\n", current_lineno, current_file);
     }
-}
-
-void clear_directive(token_state *ts)
-{
-    ts->line_is_directive = 0;
-    if (!ts->line_sz) {
-        TOKEN_STATE_CHECK_ALLOC(ts);
-        ts->line_sz = 80;
-        ts->line = realloc((char *)ts->line, ts->line_sz);
-    }
-    strcpy((char *)ts->line, "");
-    ts->ind = ts->end = 0;
 }
 
 void skip_line(token_state *ts)

@@ -263,7 +263,7 @@ TEST(LexTest, PreProcessor)
     set_token_string(&ts, line);
     assert_token(__LINE__, &ts, TOK_ID, "foo");
     assert_token(__LINE__, &ts, TOK_WS, " ");
-    assert_token(__LINE__, &ts, TOK_PP_STR, "#");
+    assert_token(__LINE__, &ts, '#', "#");
     assert_token(__LINE__, &ts, TOK_ID, "bar", true);
 
     line = "foo // comment\n";
@@ -340,19 +340,15 @@ TEST(LexTest, NonCToken)
 
 TEST(LexTest, CppNamespaces)
 {
-    auto line = "foo bar::baz bux";
+    auto line = "bar::baz bux";
     token_state ts = {};
     set_token_string(&ts, line);
-    assert_token(__LINE__, &ts, TOK_ID, "foo");
-    assert_token(__LINE__, &ts, TOK_WS, " ");
     assert_token(__LINE__, &ts, TOK_ID, "bar::baz");
     assert_token(__LINE__, &ts, TOK_WS, " ");
     assert_token(__LINE__, &ts, TOK_ID, "bux", true);
 
-    line = "foo bar:baz";
+    line = "bar:baz";
     set_token_string(&ts, line);
-    assert_token(__LINE__, &ts, TOK_ID, "foo");
-    assert_token(__LINE__, &ts, TOK_WS, " ");
     assert_token(__LINE__, &ts, TOK_ID, "bar");
     assert_token(__LINE__, &ts, ':', ":");
     assert_token(__LINE__, &ts, TOK_ID, "baz", true);
@@ -392,4 +388,17 @@ TEST(LexTest, RoundTrip)
     decode_str(p, buf, sizeof(buf));
     EXPECT_EQ(input, buf);
     free(p);
+}
+
+TEST(LexTest, PushbackData)
+{
+    const auto line = "foo bar baz";
+    token_state ts = {};
+    set_token_string(&ts, line);
+    assert_token(__LINE__, &ts, TOK_ID, "foo");
+    assert_token(__LINE__, &ts, TOK_WS, " ");
+    push_back_token_data(&ts, "buzz_");
+    assert_token(__LINE__, &ts, TOK_ID, "buzz_bar");
+    assert_token(__LINE__, &ts, TOK_WS, " ");
+    assert_token(__LINE__, &ts, TOK_ID, "baz", true);
 }

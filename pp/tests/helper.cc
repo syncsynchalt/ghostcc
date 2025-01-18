@@ -149,7 +149,6 @@ std::string print_ast(const ast_node *node)
         case TOK_AND_ASSIGN: result += "&="; break;
         case TOK_OR_ASSIGN: result += "|="; break;
         case TOK_XOR_ASSIGN: result += "^="; break;
-        case TOK_PP_STR: result += "#"; break;
         case TOK_PP_COMBINE: result += "##"; break;
         case TOK_PP_CONTINUE: result += "\\\n"; break;
         case TOK_COMMENT: result += "/*comment*/"; break;

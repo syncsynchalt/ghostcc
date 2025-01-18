@@ -60,3 +60,22 @@ TEST(TestParse, LeadingSpace)
 )");
     EXPECT_EQ(" bar\n", output);
 }
+
+TEST(TestParse, LeadingDirective)
+{
+    const auto output = run_parser("#define FOO 1\n#if FOO\n bar\n#endif\n");
+    EXPECT_EQ(" bar\n", output);
+}
+
+TEST(TestParse, DirectiveInComment)
+{
+    const auto output = run_parser(R"(
+/*
+ * This is a comment, with embedded directives.
+# define FOO 123
+ */
+# define BAR 234
+BAR
+)");
+    EXPECT_EQ("\n \n234\n", output);
+}

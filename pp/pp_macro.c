@@ -52,14 +52,21 @@ void handle_macro(const def *d, const defines *defs, token_state *ts, str_t *out
     int extra_args_num = 0;
 
     // ensure we're looking at a macro
-    // xxx todo don't use ind directly
-    size_t check_ind = ts->ind;
-    check_ind += strspn(ts->line + check_ind, WHITESPACE);
-    if (ts->line[check_ind] != '(') {
+    str_t check_keep = {0};
+    token t = get_token(ts);
+    while (t.type == TOK_WS) {
+        add_to_str(&check_keep, t.tok);
+    }
+    if (t.type != '(') {
         // Mis-fire, this is not a macro call. Substitute the string as-is.
+        if (check_keep.s) {
+            push_back_token_data(ts, check_keep.s);
+        }
+        free_str(&check_keep);
         add_to_str(out, d->name);
         return;
     }
+    free_str(&check_keep);
 
     // make room for tracking replacement value of each arg
     int num_args;
@@ -70,8 +77,6 @@ void handle_macro(const def *d, const defines *defs, token_state *ts, str_t *out
         num_args--;
         extra_args = calloc(1, (extra_args_num + 5) * sizeof(*extra_args));
     }
-
-    token t = skip_ws(ts); // skip to '('
 
     // assign replacement value of each arg
     int arg;

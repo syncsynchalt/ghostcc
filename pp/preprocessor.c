@@ -37,7 +37,6 @@ void process_file(const char *filename, FILE *in, FILE *out, parse_state *existi
     while (!feof(in)) {
         if (TOKEN_STATE_DIRECTIVE(ts)) {
             process_directive(ts, &ps);
-            clear_directive(ts);
         } else {
             if (output_active) {
                 process_tokens(ts, &ps);
@@ -263,12 +262,25 @@ static void handle_pragma(const char *line, const parse_state *state)
     }
 }
 
+
+/**
+ * Process the directive given in ts->line
+ */
 static void process_directive(token_state *ts, parse_state *state)
 {
+#define SKIP_WS do { t = get_token(ts); } while (t.type == TOK_WS)
+
     char cmd[64];
-    const char *remaining = ts->line + strspn(ts->line, " \t");
-    remaining += 1; // '#'
+    token t;
+    SKIP_WS;
+    if (t.type != '#') {
+        die("Unexpected missing hash in processing directive");
+    }
+
+    // at this point ts->line should reliably point to our directive line(s)
+    const char *remaining = ts->line + ts->ind;
     remaining += strspn(remaining, " \t");
+
     const int len = strspn(remaining, LOWER);
     snprintf(cmd, sizeof(cmd), "%.*s", len, remaining);
     remaining += len;
@@ -309,15 +321,25 @@ static void process_directive(token_state *ts, parse_state *state)
     } else if (output_active) {
         fprintf(stderr, "Warning: unrecognized directive %s\n", cmd);
     }
+
+    skip_line(ts); // pull next line and update line_is_directive flag
 }
 
 static void process_tokens(token_state *ts, parse_state *state)
 {
-    for (;;) {
+    while (!TOKEN_STATE_DIRECTIVE(ts)) {
         const token t = get_token(ts);
-        if (t.type == EOF || (t.type == TOK_ERR && ts->line_is_directive)) {
+        if (t.type == EOF) {
+            // end of stream
             return;
         }
+
+        if (ts->line_is_directive && !strchr(t.tok, '\n')) {
+            // we crossed into a directive, unget the token and stop processing
+            push_back_token_data(ts, t.tok);
+            return;
+        }
+
         const def *d = defines_get(state->defs, t.tok);
         if (d) {
             if (d->args) {

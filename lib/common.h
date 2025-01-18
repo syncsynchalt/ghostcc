@@ -5,7 +5,6 @@
 #define LOWER "abcdefghijklmnopqrstuvwxyz"
 #define NUMERIC "0123456789"
 #define HEXNUM "0123456789abcdefABCDEF"
-#define DIRECTIVE_SIGIL '\0'
 
 extern const char *current_file;
 extern int current_lineno;
