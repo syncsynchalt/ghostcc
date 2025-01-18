@@ -342,14 +342,10 @@ static void process_tokens(token_state *ts, parse_state *state)
 
         const def *d = defines_get(state->defs, t.tok);
         if (d) {
-            if (d->args) {
-                str_t result = {0};
-                handle_macro(d, state->defs, ts, &result);
-                fprintf(state->out, "%s", result.s);
-                free_str(&result);
-            } else {
-                fprintf(state->out, "%s", d->replace);
-            }
+            str_t result = {0};
+            handle_macro(d, state->defs, ts, &result);
+            fprintf(state->out, "%s", result.s ? result.s : "");
+            free_str(&result);
         } else {
             fprintf(state->out, "%s", t.tok);
         }

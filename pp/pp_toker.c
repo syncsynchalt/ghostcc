@@ -21,6 +21,7 @@ void set_token_string(token_state *ts, const char *s)
     ts->line_is_directive = 0;
     strcpy(ts->token_buf, "");
     ts->unget_ind = 0;
+    ts->unget_buf = NULL;
 }
 
 void set_token_file(token_state *ts, FILE *f, const char *filename)
@@ -34,6 +35,7 @@ void set_token_file(token_state *ts, FILE *f, const char *filename)
     ts->line_is_directive = 0;
     strcpy(ts->token_buf, "");
     ts->unget_ind = 0;
+    ts->unget_buf = NULL;
 }
 
 static void read_line_from_file(token_state *ts)
@@ -61,7 +63,11 @@ static void read_line_from_file(token_state *ts)
 static int token_string_getc(token_state *ts)
 {
     if (ts->unget_ind) {
-        return ts->unget_buf[--ts->unget_ind];
+        const char c = ts->unget_buf[--ts->unget_ind];
+        if (!ts->unget_ind) {
+            free(ts->unget_buf);
+        }
+        return c;
     }
 
     if (ts->ind >= ts->end) {
@@ -100,14 +106,21 @@ token get_token(token_state *ts)
 
 void push_back_token_data(token_state *ts, const char *data)
 {
+    if (!data) {
+        return;
+    }
+
     const size_t len = strlen(data);
-    if (ts->unget_ind + len >= TOKEN_BUF_SZ) {
-        die("Tried to push too much token data back");
+    if (ts->unget_ind) {
+        ts->unget_buf = realloc(ts->unget_buf, ts->unget_ind + len + 1);
+    } else {
+        ts->unget_buf = malloc(len + 1);
     }
     int i;
     for (i = len-1; i >= 0; i--) {
         ts->unget_buf[ts->unget_ind++] = data[i];
     }
+    ts->unget_buf[ts->unget_ind] = '\0';
 }
 
 static int directive_continues(const token_state *ts)

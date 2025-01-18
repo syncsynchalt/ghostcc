@@ -16,7 +16,7 @@ typedef struct {
     int line_is_directive;
 
     size_t unget_ind;
-    char unget_buf[TOKEN_BUF_SZ];
+    char *unget_buf;
 
 } token_state;
 

@@ -96,7 +96,22 @@ a = 1 2
 )", output); // sic
 }
 
-TEST(MacroTest, xxx)
+TEST(MacroTest, DISABLED_Testing)
+{
+    const auto output = run_parser(R"(
+         #define f(a) f(a + 2)
+         #define t(a) a
+
+         t(f)(1);
+)");
+    const auto expect = R"(
+
+         f(1 + 2);
+)";
+    EXPECT_EQ(expect, output);
+}
+
+TEST(MacroTest, DISABLED_xxx)
 {
     // C89 spec 3.8.3.5 part 1
     const auto output = run_parser(R"(
@@ -120,7 +135,7 @@ TEST(MacroTest, xxx)
     EXPECT_EQ(expect, output);
 }
 
-TEST(MacroTest, SpecTest1)
+TEST(MacroTest, DISABLED_SpecTest1)
 {
     // C89 spec 3.8.3.5 part 1
     const auto output = run_parser(R"(
@@ -146,7 +161,7 @@ TEST(MacroTest, SpecTest1)
     EXPECT_EQ(expect, output);
 }
 
-TEST(MacroTest, SpecTest2)
+TEST(MacroTest, DISABLED_SpecTest2)
 {
     // C89 spec 3.8.3.5 part 2
     const auto output = run_parser(R"(

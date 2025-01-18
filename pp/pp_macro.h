@@ -14,5 +14,6 @@
  * @param defs all known #defines
  * @param ts the lexer state (includes the string we are parsing and current position)
  * @param out[in,out] the output string to add result to
+ * @return whether a macro was found and replaced
  */
-extern void handle_macro(const def *d, const defines *defs, token_state *ts, str_t *out);
+extern int handle_macro(const def *d, const defines *defs, token_state *ts, str_t *out);
