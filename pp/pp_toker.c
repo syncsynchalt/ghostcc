@@ -12,9 +12,9 @@ static void read_full_directive(token_state *ts);
 
 void set_token_string(token_state *ts, const char *s)
 {
-    ts->line = s;
+    ts->line = s ? s : "";
     ts->ind = 0;
-    ts->end = strlen(ts->line);
+    ts->end = s ? strlen(s) : 0;
     ts->line_sz = -1; // not memory-managed
     ts->f = NULL;
     ts->filename = NULL;
@@ -64,8 +64,10 @@ static int token_string_getc(token_state *ts)
 {
     if (ts->unget_ind) {
         const char c = ts->unget_buf[--ts->unget_ind];
+        ts->unget_buf[ts->unget_ind] = '\0';
         if (!ts->unget_ind) {
             free(ts->unget_buf);
+            ts->unget_buf = NULL;
         }
         return c;
     }
@@ -88,7 +90,9 @@ static int token_string_ungetc(int c, token_state *ts)
     if (c == EOF) {
         return EOF;
     }
-    if (ts->ind && ts->line[ts->ind - 1] == c) {
+    if (!ts->unget_ind && ts->ind && ts->line[ts->ind - 1] == c) {
+        // special case:
+        // if we're not mid-pushback and our char matches the previous byte in the line, then just decrement the index
         ts->ind--;
     } else {
         const char buf[2] = { c, '\0' };

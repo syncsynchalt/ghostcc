@@ -402,3 +402,17 @@ TEST(LexTest, PushbackData)
     assert_token(__LINE__, &ts, TOK_WS, " ");
     assert_token(__LINE__, &ts, TOK_ID, "baz", true);
 }
+
+TEST(LexTest, PushbackTwice)
+{
+    const auto line = "foo bar";
+    token_state ts = {};
+    set_token_string(&ts, line);
+    assert_token(__LINE__, &ts, TOK_ID, "foo");
+    assert_token(__LINE__, &ts, TOK_WS, " ");
+    push_back_token_data(&ts, "bux1");
+    push_back_token_data(&ts, "baz2");
+    assert_token(__LINE__, &ts, TOK_ID, "baz2bux1bar", true);
+
+    assert_token(__LINE__, &ts, -1, "", true);
+}

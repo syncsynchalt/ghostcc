@@ -63,7 +63,7 @@ static hashmap_entry *get(const hashmap *h, const char *key)
     return NULL;
 }
 
-const void *hashmap_add(const hashmap *h, const char *key, const void *data)
+const void *hashmap_add(const hashmap *h, const char *key, void *data)
 {
     unsigned int b;
     hashmap_entry *e;
@@ -88,7 +88,7 @@ const void *hashmap_add(const hashmap *h, const char *key, const void *data)
     return NULL;
 }
 
-const void *hashmap_get(const hashmap *h, const char *key)
+void *hashmap_get(const hashmap *h, const char *key)
 {
     const hashmap_entry *e = get(h, key);
     return e ? e->data : NULL;
@@ -107,7 +107,7 @@ hashmap_entry *hashmap_iter(const hashmap *h, hashmap_iter_state *iter)
     return NULL;
 }
 
-const void *hashmap_delete(const hashmap *h, const char *key)
+void *hashmap_delete(const hashmap *h, const char *key)
 {
     hashmap_entry *e = get(h, key);
     if (e) {

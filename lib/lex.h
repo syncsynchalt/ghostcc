@@ -8,7 +8,7 @@ typedef struct {
     char *tok; ///< parsed token as string
 } token;
 
-#define TOKEN_BUF_SZ 64
+#define TOKEN_BUF_SZ 256
 extern token read_token(int (*getch)(void *param), int (*ungetch)(int c, void *param), void *param, char *token_buf);
 
 /**

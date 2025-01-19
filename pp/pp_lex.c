@@ -40,7 +40,7 @@ void reset_parser(const char *target, const defines *defs)
 int yylex(void)
 {
     if (!scratch) {
-        scratch = subst_tokens(pp_parse_target, pp_parse_defs, NULL);
+        scratch = subst_tokens(pp_parse_target, pp_parse_defs);
         scratch_len = strlen(scratch);
         set_token_string(&lex_ts, scratch);
     }

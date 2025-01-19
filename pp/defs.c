@@ -526,7 +526,16 @@ defines *defines_init(void)
     return defs;
 }
 
-const def *defines_get(const defines *defs, const char *name) { return defs ? hashmap_get(defs->h, name) : NULL; }
+def *defines_get(const defines *defs, const char *name)
+{
+    if (defs) {
+        def *d = hashmap_get(defs->h, name);
+        if (d && !d->ignored) {
+            return d;
+        }
+    }
+    return NULL;
+}
 
 void defines_destroy(defines *defs)
 {
@@ -544,4 +553,22 @@ void defines_destroy(defines *defs)
         free(d);
     }
     free(defs);
+}
+
+void clear_ignore_list(ignore_list *l)
+{
+    int i;
+    for (i = 0; i < l->count; i++) {
+        l->ignored[i]->ignored--;
+    }
+    free(l->ignored);
+    l->ignored = NULL;
+    l->count = 0;
+}
+
+void add_to_ignore_list(ignore_list *l, def *d)
+{
+    l->ignored = realloc(l->ignored, l->count + 1);
+    l->ignored[l->count] = d;
+    l->ignored[l->count++]->ignored++;
 }

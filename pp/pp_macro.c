@@ -174,15 +174,17 @@ static char *concatenate(const char *replacement, char **args, char **params, ch
     return result.s;
 }
 
-static int handle_object_macro(const def *d, const defines *defs, token_state *ts, str_t *out)
+static int handle_object_macro(def *d, const defines *defs, token_state *ts, str_t *out)
 {
-    char *s = subst_tokens(d->replace, defs, d->name);
+    d->ignored++;
+    char *s = subst_tokens(d->replace, defs);
     add_to_str(out, s);
     free(s);
+    d->ignored--;
     return 1;
 }
 
-int handle_macro(const def *d, const defines *defs, token_state *ts, str_t *out)
+int handle_macro(def *d, const defines *defs, token_state *ts, str_t *out)
 {
     char **extra_args = NULL;
     int extra_args_num = 0;
@@ -209,6 +211,7 @@ int handle_macro(const def *d, const defines *defs, token_state *ts, str_t *out)
     }
     free_str(&check_keep);
 
+    d->ignored++;
     // get the count of args
     int num_args;
     for (num_args = 0; d->args[num_args]; ++num_args) {}
@@ -240,7 +243,7 @@ int handle_macro(const def *d, const defines *defs, token_state *ts, str_t *out)
     // make the list of macro-expanded params
     char **expanded_params = malloc((num_args + 1) * sizeof(char *));
     for (arg = 0; params[arg]; ++arg) {
-        expanded_params[arg] = subst_tokens(params[arg], defs, d->name);
+        expanded_params[arg] = subst_tokens(params[arg], defs);
     }
     expanded_params[num_args] = NULL;
 
@@ -279,9 +282,9 @@ int handle_macro(const def *d, const defines *defs, token_state *ts, str_t *out)
     str_t interim_result = {0};
     set_token_string(&sub_ts, concatenated);
     while (!TOKEN_STATE_DONE(&sub_ts)) {
-        const token tt = get_token(&sub_ts);
-        const char *w = tt.tok;
-        const int matched = find_match_index(tt.tok, d->args);
+        t = get_token(&sub_ts);
+        const char *w = t.tok;
+        const int matched = find_match_index(t.tok, d->args);
         if (matched >= 0) {
             // if token matched against an arg name, print arg's replacement value
             add_to_str(&interim_result, expanded_params[matched]);
@@ -296,7 +299,7 @@ int handle_macro(const def *d, const defines *defs, token_state *ts, str_t *out)
         }
     }
 
-    char *s = subst_tokens(interim_result.s, defs, d->name);
+    char *s = subst_tokens(interim_result.s, defs);
     free_str(&interim_result);
     add_to_str(out, s);
     free(s);
@@ -306,5 +309,7 @@ int handle_macro(const def *d, const defines *defs, token_state *ts, str_t *out)
     free_string_list(params);
     free_string_list(expanded_params);
     free_string_list(extra_args);
+
+    d->ignored--;
     return 1;
 }

@@ -254,7 +254,7 @@ static void handle_pragma(const char *line, const parse_state *state)
         if (hashmap_get(state->once_filenames, state->current_filename)) {
             fseek(state->ts.f, 0, SEEK_END);
         } else {
-            const char *key = strdup(state->current_filename);
+            char *key = strdup(state->current_filename);
             hashmap_add(state->once_filenames, key, key);
         }
     } else {
@@ -327,7 +327,14 @@ static void process_directive(token_state *ts, parse_state *state)
 
 static void process_tokens(token_state *ts, parse_state *state)
 {
+    ignore_list ignored = {0};
+
     while (!TOKEN_STATE_DIRECTIVE(ts)) {
+        // un-ignore all ignored defines once we're no longer reading the macro expansion result
+        if (!TOKEN_STATE_READING_IGNORED(ts) && ignored.count) {
+            clear_ignore_list(&ignored);
+        }
+
         const token t = get_token(ts);
         if (t.type == EOF) {
             // end of stream
@@ -340,14 +347,22 @@ static void process_tokens(token_state *ts, parse_state *state)
             return;
         }
 
-        const def *d = defines_get(state->defs, t.tok);
+        def *d = defines_get(state->defs, t.tok);
         if (d) {
             str_t result = {0};
-            handle_macro(d, state->defs, ts, &result);
-            fprintf(state->out, "%s", result.s ? result.s : "");
+            if (handle_macro(d, state->defs, ts, &result)) {
+                push_back_token_data(ts, result.s);
+                add_to_ignore_list(&ignored, d);
+            } else {
+                fprintf(state->out, "%s", result.s ? result.s : "");
+            }
             free_str(&result);
         } else {
             fprintf(state->out, "%s", t.tok);
         }
+    }
+
+    if (ignored.count) {
+        clear_ignore_list(&ignored);
     }
 }

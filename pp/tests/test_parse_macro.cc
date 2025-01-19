@@ -99,14 +99,22 @@ a = 1 2
 TEST(MacroTest, DISABLED_Testing)
 {
     const auto output = run_parser(R"(
-         #define f(a) f(a + 2)
+         #define x    3
+         #define f(a) f(x * (a))
+         #undef  x
+         #define x    2
+         #define g    f
+         #define z    z[0]
+         #define h    g(~
+         #define m(a) a(w)
+         #define w    0,1
          #define t(a) a
 
-         t(f)(1);
+         t(t(g)(0) + t)(1);
 )");
     const auto expect = R"(
 
-         f(1 + 2);
+         f(2 * (0)) + t(1);
 )";
     EXPECT_EQ(expect, output);
 }
@@ -161,7 +169,7 @@ TEST(MacroTest, DISABLED_SpecTest1)
     EXPECT_EQ(expect, output);
 }
 
-TEST(MacroTest, DISABLED_SpecTest2)
+TEST(MacroTest, SpecTest2)
 {
     // C89 spec 3.8.3.5 part 2
     const auto output = run_parser(R"(

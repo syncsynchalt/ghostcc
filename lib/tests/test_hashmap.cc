@@ -17,7 +17,7 @@ TEST(HashMapTest, PowerOfTwo)
 TEST(HashMapTest, AddGet)
 {
     hashmap *h = hashmap_init(128);
-    const char *payload = "p";
+    char payload[] = "p";
 
     hashmap_add(h, "foo", payload);
     hashmap_add(h, "bar", payload);
@@ -30,8 +30,8 @@ TEST(HashMapTest, AddGet)
 TEST(HashMapTest, Overwrite)
 {
     hashmap *h = hashmap_init(128);
-    const char *p1 = "p";
-    const char *p2 = "o";
+    char p1[] = "p";
+    char p2[] = "o";
 
     EXPECT_EQ(NULL, hashmap_add(h, "foo", p1));
     EXPECT_EQ(p1, hashmap_add(h, "foo", p2));
@@ -42,7 +42,7 @@ TEST(HashMapTest, Overwrite)
 TEST(HashMapTest, Resize)
 {
     hashmap *h = hashmap_init(1);
-    const char *p = "0123456789";
+    char p[] = "0123456789";
 
     hashmap_add(h, "foo1", p + 1);
     hashmap_add(h, "foo2", p + 2);
@@ -61,7 +61,7 @@ TEST(HashMapTest, Resize)
 TEST(HashMapTest, Iterate)
 {
     int found[100] = {0};
-    const char arr[100] = "";
+    char arr[100] = "";
 
     hashmap *h = hashmap_init(32);
     for (int i = 0; i < 100; i++) {
@@ -85,7 +85,7 @@ TEST(HashMapTest, Iterate)
 
 TEST(HashMapTest, Delete)
 {
-    const auto payload = "abc";
+    char payload[] = "abc";
     const hashmap *h = hashmap_init(64);
     hashmap_add(h, "foo", payload);
     EXPECT_EQ(payload, (char *) hashmap_get(h, "foo"));

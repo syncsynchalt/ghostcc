@@ -23,6 +23,7 @@ typedef struct {
 #define TOKEN_STATE_DONE(tss) ((tss)->ind >= (tss)->end && !(tss)->unget_ind)
 #define TOKEN_STATE_DIRECTIVE(tss) ((tss)->line_is_directive)
 #define TOKEN_STATE_CHECK_ALLOC(tss) if ((tss)->line_sz < 0) die("Can't alloc static line")
+#define TOKEN_STATE_READING_IGNORED(tss) ((tss)->unget_ind != 0)
 
 /// set up the token state to consume given string
 extern void set_token_string(token_state *ts, const char *s);
