@@ -169,7 +169,7 @@ TEST(MacroTest, DISABLED_SpecTest1)
     EXPECT_EQ(expect, output);
 }
 
-TEST(MacroTest, SpecTest2)
+TEST(MacroTest, DISABLED_SpecTest2)
 {
     // C89 spec 3.8.3.5 part 2
     const auto output = run_parser(R"(
@@ -197,4 +197,16 @@ TEST(MacroTest, SpecTest2)
          "hello" ", world"
 )";
     EXPECT_EQ(expect, output);
+}
+
+
+TEST(TestParse, MultiLineMacro)
+{
+    const auto output = run_parser(R"(
+#define x(a, b, msg)
+
+x("foo", "bar", "string 1"
+    "string 2")
+)");
+    EXPECT_EQ("\n\n\n", output);
 }

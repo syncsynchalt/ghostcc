@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include "ast.h"
 #include "common.h"
@@ -178,8 +179,11 @@ static void handle_include(const char *line, parse_state *state)
     const char *existing_file = current_file;
     const int existing_line = current_lineno;
     FILE *in = fopen(filename, "r");
-    // ReSharper disable once CppDFALocalValueEscapesFunction
+    if (!in) {
+        die("Unable to open file %s: %s", filename, strerror(errno));
+    }
     process_file(filename, in, state->out, state);
+    fclose(in);
     current_file = existing_file;
     current_lineno = existing_line;
     fprintf(state->out, "# %d \"%s\"\n", current_lineno + 1, current_file);

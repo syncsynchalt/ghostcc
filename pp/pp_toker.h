@@ -20,7 +20,7 @@ typedef struct {
 
 } token_state;
 
-#define TOKEN_STATE_DONE(tss) ((tss)->ind >= (tss)->end && !(tss)->unget_ind)
+#define TOKEN_STATE_DONE(tss) ((tss)->ind >= (tss)->end && (!(tss)->f || feof((tss)->f)) && !(tss)->unget_ind)
 #define TOKEN_STATE_DIRECTIVE(tss) ((tss)->line_is_directive)
 #define TOKEN_STATE_CHECK_ALLOC(tss) if ((tss)->line_sz < 0) die("Can't alloc static line")
 #define TOKEN_STATE_READING_IGNORED(tss) ((tss)->unget_ind != 0)
