@@ -405,7 +405,7 @@ defines *defines_init(void)
     defines_add(defs, "__STDC_NO_THREADS__", NULL, "1");
     defines_add(defs, "__STDC_UTF_16__", NULL, "1");
     defines_add(defs, "__STDC_UTF_32__", NULL, "1");
-    defines_add(defs, "__STDC_VERSION__", NULL, "201710L");
+    defines_add(defs, "__STDC_VERSION__", NULL, "199901L");
     defines_add(defs, "__STDC__", NULL, "1");
     defines_add(defs, "__UINT16_C_SUFFIX__", NULL, "");
     defines_add(defs, "__UINT16_FMTX__", NULL, "\"hX\"");
@@ -522,6 +522,7 @@ defines *defines_init(void)
 
     // fixes for system-specific issues
     defines_add(defs, "__has_include", "...", "0");
+    defines_add(defs, "_DONT_USE_CTYPE_INLINE_", NULL, NULL);
 
     return defs;
 }
