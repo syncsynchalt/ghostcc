@@ -262,7 +262,7 @@ static void handle_pragma(const char *line, const parse_state *state)
             hashmap_add(state->once_filenames, key, key);
         }
     } else {
-        fprintf(stderr, "Warning: unrecognized pragma %s\n", buf);
+        fprintf(stderr, "Warning: unrecognized pragma %s\n", line);
     }
 }
 
@@ -322,6 +322,14 @@ static void process_directive(token_state *ts, parse_state *state)
         handle_else(state);
     } else if (strcmp(cmd, "pragma") == 0) {
         handle_pragma(remaining, state);
+    } else if (strcmp(cmd, "warning") == 0) {
+        if (output_active) {
+            fprintf(stderr, "#warning: %s\n", remaining);
+        }
+    } else if (strcmp(cmd, "error") == 0) {
+        if (output_active) {
+            die("#error: %s", remaining);
+        }
     } else if (output_active) {
         fprintf(stderr, "Warning: unrecognized directive %s\n", cmd);
     }

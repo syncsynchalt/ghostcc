@@ -32,7 +32,7 @@ int defines_remove(const defines *defs, const char *name)
             free(d->args[i]);
         }
         free(d->replace);
-        free((void *)d);
+        free((void *) d);
         return 1;
     }
     return 0;
@@ -110,7 +110,7 @@ defines *defines_init(void)
     defines_add(defs, "__FILE__", NULL, "\"__filename__\"");
     defines_add(defs, "__LINE__", NULL, "0");
 
-    // initial defines from 'echo | clang -dM -E -'
+    // initial defines from 'echo | cc -E -dM -std=c89 -'
 
     defines_add(defs, "_LP64", NULL, "1");
     defines_add(defs, "__AARCH64EL__", NULL, "1");
@@ -238,29 +238,6 @@ defines *defines_init(void)
     defines_add(defs, "__FPCLASS_SNAN", NULL, "0x0001");
     defines_add(defs, "__FP_FAST_FMA", NULL, "1");
     defines_add(defs, "__FP_FAST_FMAF", NULL, "1");
-    defines_add(defs, "__GCC_ASM_FLAG_OUTPUTS__", NULL, "1");
-    defines_add(defs, "__GCC_ATOMIC_BOOL_LOCK_FREE", NULL, "2");
-    defines_add(defs, "__GCC_ATOMIC_CHAR16_T_LOCK_FREE", NULL, "2");
-    defines_add(defs, "__GCC_ATOMIC_CHAR32_T_LOCK_FREE", NULL, "2");
-    defines_add(defs, "__GCC_ATOMIC_CHAR_LOCK_FREE", NULL, "2");
-    defines_add(defs, "__GCC_ATOMIC_INT_LOCK_FREE", NULL, "2");
-    defines_add(defs, "__GCC_ATOMIC_LLONG_LOCK_FREE", NULL, "2");
-    defines_add(defs, "__GCC_ATOMIC_LONG_LOCK_FREE", NULL, "2");
-    defines_add(defs, "__GCC_ATOMIC_POINTER_LOCK_FREE", NULL, "2");
-    defines_add(defs, "__GCC_ATOMIC_SHORT_LOCK_FREE", NULL, "2");
-    defines_add(defs, "__GCC_ATOMIC_TEST_AND_SET_TRUEVAL", NULL, "1");
-    defines_add(defs, "__GCC_ATOMIC_WCHAR_T_LOCK_FREE", NULL, "2");
-    defines_add(defs, "__GCC_HAVE_DWARF2_CFI_ASM", NULL, "1");
-    defines_add(defs, "__GCC_HAVE_SYNC_COMPARE_AND_SWAP_1", NULL, "1");
-    defines_add(defs, "__GCC_HAVE_SYNC_COMPARE_AND_SWAP_2", NULL, "1");
-    defines_add(defs, "__GCC_HAVE_SYNC_COMPARE_AND_SWAP_4", NULL, "1");
-    defines_add(defs, "__GCC_HAVE_SYNC_COMPARE_AND_SWAP_8", NULL, "1");
-    defines_add(defs, "__GNUC_MINOR__", NULL, "2");
-    defines_add(defs, "__GNUC_PATCHLEVEL__", NULL, "1");
-    defines_add(defs, "__GNUC_STDC_INLINE__", NULL, "1");
-    defines_add(defs, "__GNUC__", NULL, "4");
-    defines_add(defs, "__GXX_ABI_VERSION", NULL, "1002");
-    defines_add(defs, "__HAVE_FUNCTION_MULTI_VERSIONING", NULL, "1");
     defines_add(defs, "__INT16_C_SUFFIX__", NULL, "");
     defines_add(defs, "__INT16_FMTd__", NULL, "\"hd\"");
     defines_add(defs, "__INT16_FMTi__", NULL, "\"hi\"");
@@ -405,8 +382,8 @@ defines *defines_init(void)
     defines_add(defs, "__STDC_NO_THREADS__", NULL, "1");
     defines_add(defs, "__STDC_UTF_16__", NULL, "1");
     defines_add(defs, "__STDC_UTF_32__", NULL, "1");
-    defines_add(defs, "__STDC_VERSION__", NULL, "199901L");
     defines_add(defs, "__STDC__", NULL, "1");
+    defines_add(defs, "__STRICT_ANSI__", NULL, "1");
     defines_add(defs, "__UINT16_C_SUFFIX__", NULL, "");
     defines_add(defs, "__UINT16_FMTX__", NULL, "\"hX\"");
     defines_add(defs, "__UINT16_FMTo__", NULL, "\"ho\"");
@@ -510,7 +487,7 @@ defines *defines_init(void)
     defines_add(defs, "__apple_build_version__", NULL, "16000026");
     defines_add(defs, "__arm64", NULL, "1");
     defines_add(defs, "__arm64__", NULL, "1");
-    defines_add(defs, "__block", NULL, NULL);
+    defines_add(defs, "__block", NULL, "__attribute__((__blocks__(byref)))");
     defines_add(defs, "__llvm__", NULL, "1");
     defines_add(defs, "__nonnull", NULL, "_Nonnull");
     defines_add(defs, "__null_unspecified", NULL, "_Null_unspecified");
@@ -518,11 +495,15 @@ defines *defines_init(void)
     defines_add(defs, "__pic__", NULL, "2");
     defines_add(defs, "__strong", NULL, "");
     defines_add(defs, "__unsafe_unretained", NULL, "");
-    defines_add(defs, "__weak", NULL, NULL);
+    defines_add(defs, "__weak", NULL, "__attribute__((objc_gc(weak)))");
 
     // fixes for system-specific issues
     defines_add(defs, "__has_include", "...", "0");
     defines_add(defs, "_DONT_USE_CTYPE_INLINE_", NULL, NULL);
+    defines_add(defs, "__STDC_VERSION__", NULL, "0L");
+    defines_add(defs, "__GNUC__", NULL, "4");
+    defines_add(defs, "__GNUC_MINOR__", NULL, "0");
+    defines_add(defs, "__GNUC_PATCHLEVEL__", NULL, "0");
 
     return defs;
 }
