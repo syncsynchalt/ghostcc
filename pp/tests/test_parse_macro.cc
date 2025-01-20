@@ -96,32 +96,19 @@ a = 1 2
 )", output); // sic
 }
 
-TEST(MacroTest, DISABLED_Testing)
+TEST(MacroTest, FileAndLine)
 {
     const auto output = run_parser(R"(
-         #define x    3
-         #define f(a) f(x * (a))
-         #undef  x
-         #define x    2
-         #define g    f
-         #define z    z[0]
-         #define h    g(~
-         #define m(a) a(w)
-         #define w    0,1
-         #define t(a) a
-
-         t(t(g)(0) + t)(1);
+__FILE__
+__LINE__
 )");
-    const auto expect = R"(
 
-         f(2 * (0)) + t(1);
-)";
-    EXPECT_EQ(expect, output);
+    EXPECT_TRUE(string_contains(output, "/tmp"));
+    EXPECT_TRUE(string_ends_with(output, "\n3\n"));
 }
 
-TEST(MacroTest, DISABLED_xxx)
+TEST(MacroTest, DISABLED_PartialSpec)
 {
-    // C89 spec 3.8.3.5 part 1
     const auto output = run_parser(R"(
          #define x    3
          #define f(a) f(x * (a))

@@ -174,8 +174,29 @@ static char *concatenate(const char *replacement, char **args, char **params, ch
     return result.s;
 }
 
+// handle __FILE__ and __LINE__
+static int handle_dynamic_macro(def *d, const defines *defs, token_state *ts, str_t *out)
+{
+    if (strcmp(d->name, "__FILE__") == 0) {
+        add_to_str(out, current_file);
+        return 1;
+    }
+    if (strcmp(d->name, "__LINE__") == 0) {
+        char buf[64];
+        snprintf(buf, sizeof(buf), "%d", current_lineno);
+        add_to_str(out, buf);
+        return 1;
+    }
+    return 0;
+}
+
+// ReSharper disable once CppDFAConstantFunctionResult
 static int handle_object_macro(def *d, const defines *defs, token_state *ts, str_t *out)
 {
+    if (handle_dynamic_macro(d, defs, ts, out)) {
+        return 1;
+    }
+
     d->ignored++;
     char *s = subst_tokens(d->replace, defs);
     add_to_str(out, s);
