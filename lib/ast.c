@@ -43,3 +43,17 @@ ast_node *make_ast_node(const token t, ast_node *left, ast_node *right)
     }
     return node;
 }
+
+void add_to_ast_list(ast_node *node, ast_node *list_member)
+{
+    if (node->list_len % 5 == 0) {
+        node->list = realloc(node->list, (node->list_len + 6) * sizeof(ast_node *));
+    }
+    node->list[node->list_len++] = list_member;
+}
+
+void free_ast_node(ast_node *node)
+{
+    free(node->s);
+    free(node);
+}

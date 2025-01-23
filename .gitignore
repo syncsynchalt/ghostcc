@@ -2,6 +2,7 @@
 *.a
 test-asm/prog-*
 pp/ghostpp
+cc/ghostcc
 */tests/tests
 y.tab.c
 y.tab.h

@@ -14,7 +14,7 @@ struct if_frame {
 typedef struct {
   struct if_frame *top_if;
   defines *defs;
-  const char * const *include_paths;
+  const char **include_paths;
   FILE *out;
   const char *current_filename;
   hashmap *once_filenames;

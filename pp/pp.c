@@ -14,15 +14,12 @@ void usage(int argc, char **argv)
     die("Usage: %s infile [[-o] outfile] [-I include_path]", argv[0]);
 }
 
-
-int main(const int argc, char **argv)
+char **builtin_include_paths(size_t *num_include_paths)
 {
-    int arg;
-    const char **include_paths = NULL;
-    int num_include_paths = 0;
+    char **include_paths = NULL;
 
-    include_paths = malloc(sizeof(*include_paths) * (num_include_paths + 6));
-    include_paths[num_include_paths++] = strdup("/usr/include");
+    include_paths = malloc(sizeof(*include_paths) * (*num_include_paths + 6));
+    include_paths[(*num_include_paths)++] = strdup("/usr/include");
     FILE *p = popen("xcrun --show-sdk-path", "r");
     if (p) {
         char buf[512];
@@ -30,10 +27,18 @@ int main(const int argc, char **argv)
         if (strlen(buf)) {
             const size_t len = strcspn(buf, "\r\n");
             snprintf(buf+len, sizeof(buf)-len, "/usr/include");
-            include_paths[num_include_paths++] = strdup(buf);
+            include_paths[(*num_include_paths)++] = strdup(buf);
         }
         pclose(p);
     }
+    return include_paths;
+}
+
+int main(const int argc, char **argv)
+{
+    int arg;
+    size_t num_include_paths = 0;
+    char **include_paths = builtin_include_paths(&num_include_paths);
 
     while ((arg = getopt(argc, argv, "o:I:")) != -1) {
         if (arg == '?' || arg == ':') {

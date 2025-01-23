@@ -56,7 +56,7 @@ void process_file(const char *filename, FILE *in, FILE *out, parse_state *existi
     }
 }
 
-static int resolve_include_path(char *filename, const size_t len, const char *const *include_paths)
+static int resolve_include_path(char *filename, const size_t len, const char **include_paths)
 {
     char buf[256];
     int i;

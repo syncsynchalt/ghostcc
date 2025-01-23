@@ -1,4 +1,5 @@
 %{
+// Jeff Lee, 1985
 #include "ast.h"
 #include "pp_lex.h"
 extern char *yytext;
@@ -130,7 +131,7 @@ logical_or_expression
 conditional_expression
     : logical_or_expression
     | logical_or_expression '?' conditional_expression ':' conditional_expression
-                { $2->left = $1; $2->right = $4; $4->left = $3; $4->right = $5; $$ = $2; }
+                { $$ = combine_binary($1, $2, combine_binary($3, $4, $5)); }
     ;
 
 constant_expression

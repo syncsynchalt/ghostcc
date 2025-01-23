@@ -90,6 +90,9 @@ const void *hashmap_add(const hashmap *h, const char *key, void *data)
 
 void *hashmap_get(const hashmap *h, const char *key)
 {
+    if (!h) {
+        return NULL;
+    }
     const hashmap_entry *e = get(h, key);
     return e ? e->data : NULL;
 }

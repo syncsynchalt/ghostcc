@@ -65,6 +65,8 @@ typedef enum {
     TOK_OR_ASSIGN,
     TOK_XOR_ASSIGN,
 
+    TOK_TYPE_NAME,
+
     // pre-processor only
     TOK_PP_COMBINE = 900,
     TOK_PP_CONTINUE,
@@ -72,7 +74,7 @@ typedef enum {
     TOK_LINE_COMMENT,
 
     TOK_ERR = 1000,
-    TOK_DIRECTIVE,
+    TOK_EOF = -1,
 } token_type;
 
 #define IS_KEYWORD(t) (t >= 600 && t < 700)

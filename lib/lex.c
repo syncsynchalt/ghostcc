@@ -108,7 +108,7 @@ token read_token(int (*getch)(void *), int (*ungetch)(int c, void *param), void 
     int c = getch(param);
 
     if (c == EOF) {
-        t.type = -1;
+        t.type = TOK_EOF;
         return t;
     }
 
