@@ -9,7 +9,7 @@ all: test
 test: tests run
 
 tests: $(OBJ) ../libcommon.a
-	c++ $(LDFLAGS) -o tests $(OBJ)
+	c++ -o tests $(OBJ) $(LDFLAGS)
 
 run: tests
 	./tests

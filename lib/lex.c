@@ -504,6 +504,7 @@ char *decode_str(const char *s, char *out, const size_t len)
     if (*p != '"') {
         return NULL;
     }
+    *q = '\0';
     return out;
 }
 

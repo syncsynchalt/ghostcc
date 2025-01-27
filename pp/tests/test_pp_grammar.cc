@@ -17,13 +17,13 @@ TEST(GrammarTest, TestExhaustive)
 {
     const auto r = process_file("1 + 2");
     ASSERT_TRUE(r);
-    ASSERT_EQ(NODE_OTHER, r->node_type);
-    ASSERT_EQ('+', r->token_type);
+    ASSERT_EQ(NODE_OTHER, r->type);
+    ASSERT_EQ('+', r->tok_type);
     ASSERT_TRUE(r->left);
     ASSERT_TRUE(r->right);
-    ASSERT_EQ(NODE_INT, r->left->node_type);
+    ASSERT_EQ(NODE_INT, r->left->type);
     ASSERT_EQ(1, r->left->ival);
-    ASSERT_EQ(NODE_INT, r->right->node_type);
+    ASSERT_EQ(NODE_INT, r->right->type);
     ASSERT_EQ(2, r->right->ival);
 }
 

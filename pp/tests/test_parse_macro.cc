@@ -72,6 +72,21 @@ TEST(MacroTest, MacroVarArgEmpty)
 )", output); // sic
 }
 
+TEST(MacroTest, LeadingSpace)
+{
+    const auto output = run_parser(R"(
+#define FIRST(x, y) x
+#if FIRST (1, 2) == 1
+ foo
+#else
+ bar
+#endif
+)");
+    EXPECT_EQ(R"(
+ foo
+)", output); // sic
+}
+
 TEST(MacroTest, ArgReplace)
 {
     const auto output = run_parser(R"(

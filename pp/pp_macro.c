@@ -161,6 +161,7 @@ static char *concatenate(const char *replacement, char **args, char **params, ch
                     break;
                 }
             }
+            i = last_non_ws;
         } else if (NOT_WHITESPACE(tokens[i])) {
             last_non_ws = i;
         }
@@ -220,6 +221,7 @@ int handle_macro(def *d, const defines *defs, token_state *ts, str_t *out)
     token t = get_token(ts);
     while (t.type == TOK_WS) {
         add_to_str(&check_keep, t.tok);
+        t = get_token(ts);
     }
     if (t.type != '(') {
         // Mis-fire, this is not a macro call. Substitute the string as-is.

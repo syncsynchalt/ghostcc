@@ -12,33 +12,33 @@ ast_node *make_ast_node(const token t, ast_node *left, ast_node *right)
     node->left = left;
     node->right = right;
 
-    node->token_type = t.type;
+    node->tok_type = t.type;
     if (IS_KEYWORD(t.type) || t.type == TOK_ID) {
         node->s = strdup(t.tok);
-        node->node_type = NODE_OTHER;
+        node->type = NODE_OTHER;
     } else switch ((int)t.type) {
         case TOK_NUM:
             snprintf(buf, sizeof(buf), "%s", t.tok);
             // todo - handle type suffixes
             if (strchr(t.tok, '.') || strchr(t.tok, 'e') || strchr(t.tok, 'E')) {
-                node->node_type = NODE_FLT;
+                node->type = NODE_FLT;
                 node->fval = strtod(buf, NULL);
             } else {
-                node->node_type = NODE_INT;
+                node->type = NODE_INT;
                 node->ival = strtol(t.tok, NULL, 0);
             }
             break;
         case TOK_STR:
             node->s = malloc(strlen(t.tok) + 1);
             decode_str(t.tok, node->s, strlen(t.tok) + 1);
-            node->node_type = NODE_STR;
+            node->type = NODE_STR;
             break;
         case TOK_CHA:
             node->cval = t.tok[1] == '\\' ? t.tok[2] : t.tok[1];
-            node->node_type = NODE_CHA;
+            node->type = NODE_CHA;
             break;
         default:
-            node->node_type = NODE_OTHER;
+            node->type = NODE_OTHER;
             break;
     }
     return node;

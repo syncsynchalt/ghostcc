@@ -499,6 +499,7 @@ defines *defines_init(void)
 
     // fixes for system-specific issues
     defines_add(defs, "__has_include", "...", "0");
+    defines_add(defs, "__has_builtin", "...", "0");
     defines_add(defs, "_DONT_USE_CTYPE_INLINE_", NULL, NULL);
     defines_add(defs, "__STDC_VERSION__", NULL, "0L");
     defines_add(defs, "__GNUC__", NULL, "4");
@@ -550,7 +551,7 @@ void clear_ignore_list(ignore_list *l)
 
 void add_to_ignore_list(ignore_list *l, def *d)
 {
-    l->ignored = realloc(l->ignored, l->count + 1);
+    l->ignored = realloc(l->ignored, sizeof (*l->ignored) * (l->count + 1));
     l->ignored[l->count] = d;
     l->ignored[l->count++]->ignored++;
 }

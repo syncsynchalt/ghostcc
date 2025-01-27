@@ -4,6 +4,13 @@ extern "C" {
 #include "preprocessor.h"
 }
 
+TEST(TestParse, EmptyFile)
+{
+    const auto output = run_parser(R"(
+)");
+    EXPECT_EQ("\n", output);
+}
+
 TEST(ParseTest, CommentReal)
 {
     const auto contents = R"(/*
@@ -65,6 +72,19 @@ TEST(TestParse, LeadingDirective)
 {
     const auto output = run_parser("#define FOO 1\n#if FOO\n bar\n#endif\n");
     EXPECT_EQ(" bar\n", output);
+}
+
+TEST(TestParse, NotEqual)
+{
+    const auto output = run_parser(R"(
+#define FOO 1
+#if FOO != 2
+ foo
+#else
+ bar
+#endif
+)");
+    EXPECT_EQ("\n foo\n", output);
 }
 
 TEST(TestParse, DirectiveInComment)

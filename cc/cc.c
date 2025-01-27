@@ -7,40 +7,28 @@
 #include "die.h"
 
 static char *infile = NULL;
-static char *outfile = NULL;
-static char outfile_buf[256];
+static char *outfile = "a.out";
 
 void usage(int argc, char **argv)
 {
     die("Usage: %s infile [-o outfile] [-I include_path]", argv[0]);
 }
 
-char **builtin_include_paths(size_t *num_include_paths)
-{
-    char **include_paths = NULL;
-
-    include_paths = malloc(sizeof(*include_paths) * (*num_include_paths + 6));
-    include_paths[(*num_include_paths)++] = strdup("/usr/include");
-    FILE *p = popen("xcrun --show-sdk-path", "r");
-    if (p) {
-        char buf[512];
-        fgets(buf, sizeof(buf), p);
-        if (strlen(buf)) {
-            const size_t len = strcspn(buf, "\r\n");
-            snprintf(buf+len, sizeof(buf)-len, "/usr/include");
-            include_paths[(*num_include_paths)++] = strdup(buf);
-        }
-        pclose(p);
-    }
-    return include_paths;
-}
-
-static FILE *preprocess_file(const char *filename)
+static FILE *preprocess_file(const char *filename, char **include_paths)
 {
     char ppout[256] = "/tmp/ghostpp.tmp.XXXXXX";
     mkstemp(ppout);
-    char cmd[256];
-    snprintf(cmd, sizeof(cmd), "ghostpp -o %s %s", ppout, filename);
+    char cmd[1024];
+
+    snprintf(cmd, sizeof(cmd), "ghostpp -o %s", ppout);
+    size_t i, l;
+    for (i = 0; include_paths[i]; i++) {
+        l = strlen(cmd);
+        snprintf(cmd + l, sizeof(cmd) - l, " -I \"%s\"", include_paths[i]);
+    }
+    l = strlen(cmd);
+    snprintf(cmd + l, sizeof(cmd) - l, " %s", filename);
+
     if (system(cmd) != 0) {
         die("Error running '%s', exiting", cmd);
     }
@@ -56,7 +44,7 @@ int main(const int argc, char **argv)
 {
     int arg;
     size_t num_include_paths = 0;
-    char **include_paths = builtin_include_paths(&num_include_paths);
+    char **include_paths = calloc(1, sizeof(*include_paths) * 1);
 
     while ((arg = getopt(argc, argv, "o:I:")) != -1) {
         if (arg == '?' || arg == ':') {
@@ -67,9 +55,9 @@ int main(const int argc, char **argv)
         }
         if (arg == 'I') {
             if (num_include_paths % 5 == 0) {
-                include_paths = realloc(include_paths, sizeof(*include_paths) * 6);
-                include_paths[num_include_paths++] = strdup(optarg);
+                include_paths = realloc(include_paths, sizeof(*include_paths) * (num_include_paths + 6));
             }
+            include_paths[num_include_paths++] = strdup(optarg);
         }
     }
     include_paths[num_include_paths] = NULL;
@@ -85,22 +73,13 @@ int main(const int argc, char **argv)
         usage(argc, argv);
     }
 
-    if (!outfile) {
-        snprintf(outfile_buf, sizeof(outfile_buf), "%s", infile);
-        char *p = strrchr(outfile_buf, '.');
-        if (!p) {
-            p = outfile_buf + strlen(outfile_buf);
-        }
-        snprintf(p, sizeof(outfile_buf) - (p - outfile_buf), ".o");
-        outfile = outfile_buf;
-    }
     FILE *out = fopen(outfile, "w");
     if (!out) {
         die("Can't open %s for writing: %s", outfile, strerror(errno));
     }
     output = out;
 
-    FILE *in = preprocess_file(infile);
+    FILE *in = preprocess_file(infile, include_paths);
     process_file(infile, in, out);
     fclose(out);
     fclose(in);

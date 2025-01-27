@@ -68,7 +68,7 @@ std::string run_parser_on_file(const std::string &filename, const std::string &e
 
 std::string print_ast_node_type(const ast_node *node)
 {
-    switch (node->node_type) {
+    switch (node->type) {
         case NODE_LIST: return "(nt:list)";
         case NODE_SUBSCRIPT: return "(nt:subscript)";
         case NODE_CAST: return "(nt:cast)";
@@ -93,7 +93,7 @@ std::string print_ast_node_type(const ast_node *node)
 std::string print_ast_node(const ast_node *node)
 {
     std::string result;
-        switch (node->token_type) {
+        switch (node->tok_type) {
         case TOK_WS: result += ' '; break;
         case TOK_KW_AUTO: result += "auto"; break;
         case TOK_KW_BREAK: result += "break"; break;
@@ -154,7 +154,7 @@ std::string print_ast_node(const ast_node *node)
         case TOK_PP_CONTINUE: result += "\\\n"; break;
         case TOK_COMMENT: result += "/*comment*/"; break;
         case TOK_LINE_COMMENT: result += "//line-comment\n"; break;
-        default: result += (char)node->token_type; break;
+        default: result += (char)node->tok_type; break;
     }
 
     if (node->list_len) {
@@ -171,11 +171,11 @@ std::string print_ast(const ast_node *node)
 {
     auto result = std::string();
 
-    if (node->node_type == NODE_INT) {
+    if (node->type == NODE_INT) {
         return std::to_string(node->ival);
-    } else if (node->node_type == NODE_FLT) {
+    } else if (node->type == NODE_FLT) {
         return std::to_string(node->fval);
-    } else if (node->node_type == NODE_CHA) {
+    } else if (node->type == NODE_CHA) {
         if (!isprint(node->cval)) {
             return "'?'"s;
         }
@@ -183,7 +183,7 @@ std::string print_ast(const ast_node *node)
             return "'\\"s + (char)node->cval + "'";
         }
         return "'"s + (char)node->cval + "'";
-    } else if (node->node_type == NODE_STR) {
+    } else if (node->type == NODE_STR) {
         const std::stringstream ss(node->s);
         return ss.str();
     }

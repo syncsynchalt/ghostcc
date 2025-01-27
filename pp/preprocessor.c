@@ -227,8 +227,9 @@ static void handle_define(const char *line, parse_state *state)
         if (*q != ')') {
             die("#define missing closing parens: %s", line);
         }
-        args = malloc(q - p);
+        args = malloc(q - p + 1);
         strncpy(args, p + 1, q - p - 1);
+        args[q-p-1] = '\0';
         p = q + 1;
     }
     p += strspn(p, " \t");

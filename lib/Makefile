@@ -1,7 +1,7 @@
 SRC=$(wildcard *.c)
 OBJ=$(patsubst %.c,%.o,$(SRC))
 
-CFLAGS=-Werror -std=c89 -g
+CFLAGS=-Werror -std=gnu89 -g
 
 all: libcommon.a
 
@@ -12,5 +12,5 @@ test: all
 	$(MAKE) -C tests
 
 clean:
-	rm -f *.o ghostpp
+	rm -f *.o libcommon.a
 	$(MAKE) -C tests $@

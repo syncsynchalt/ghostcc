@@ -14,17 +14,19 @@ void usage(int argc, char **argv)
     die("Usage: %s infile [[-o] outfile] [-I include_path]", argv[0]);
 }
 
-char **builtin_include_paths(size_t *num_include_paths)
+const char **builtin_include_paths(size_t *num_include_paths)
 {
-    char **include_paths = NULL;
+    const char **include_paths = NULL;
 
     include_paths = malloc(sizeof(*include_paths) * (*num_include_paths + 6));
     include_paths[(*num_include_paths)++] = strdup("/usr/include");
+    // include_paths[(*num_include_paths)++] = strdup("/usr/include/aarch64-linux-gnu");
+    // include_paths[(*num_include_paths)++] = strdup("/usr/lib/gcc/aarch64-linux-gnu/12/include");
+
     FILE *p = popen("xcrun --show-sdk-path", "r");
     if (p) {
         char buf[512];
-        fgets(buf, sizeof(buf), p);
-        if (strlen(buf)) {
+        if (fgets(buf, sizeof(buf), p) && strlen(buf)) {
             const size_t len = strcspn(buf, "\r\n");
             snprintf(buf+len, sizeof(buf)-len, "/usr/include");
             include_paths[(*num_include_paths)++] = strdup(buf);
@@ -38,7 +40,7 @@ int main(const int argc, char **argv)
 {
     int arg;
     size_t num_include_paths = 0;
-    char **include_paths = builtin_include_paths(&num_include_paths);
+    const char **include_paths = builtin_include_paths(&num_include_paths);
 
     while ((arg = getopt(argc, argv, "o:I:")) != -1) {
         if (arg == '?' || arg == ':') {
@@ -49,9 +51,9 @@ int main(const int argc, char **argv)
         }
         if (arg == 'I') {
             if (num_include_paths % 5 == 0) {
-                include_paths = realloc(include_paths, sizeof(*include_paths) * 6);
-                include_paths[num_include_paths++] = strdup(optarg);
+                include_paths = realloc(include_paths, sizeof(*include_paths) * (num_include_paths + 6));
             }
+            include_paths[num_include_paths++] = strdup(optarg);
         }
     }
     include_paths[num_include_paths] = NULL;

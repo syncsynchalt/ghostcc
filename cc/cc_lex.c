@@ -117,7 +117,7 @@ static int cc_ungetch(int c, void *unused)
 
 void check_for_typedef(const ast_node *node)
 {
-    while (node && node->token_type != TOK_KW_TYPEDEF) {
+    while (node && node->tok_type != TOK_KW_TYPEDEF) {
         node = node->left;
     }
     if (node) {

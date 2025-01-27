@@ -21,7 +21,7 @@ ast_result resolve_ast(const ast_node *node)
         return r;
     }
 
-    switch (node->node_type) {
+    switch (node->type) {
         case NODE_CHA:
             r.ival = node->cval;
             return r;
@@ -54,7 +54,7 @@ ast_result resolve_ast(const ast_node *node)
     }
 
     // handle the short-circuit operators specially
-    switch ((int)node->token_type) {
+    switch ((int)node->tok_type) {
         case TOK_AND_OP:
             r.ival = 0;
             r1 = resolve_ast(node->left);
@@ -86,7 +86,7 @@ ast_result resolve_ast(const ast_node *node)
 
     r1 = resolve_ast(node->left);
     r2 = resolve_ast(node->right);
-    switch ((int)node->token_type) {
+    switch ((int)node->tok_type) {
         case '+':
             VR(V(r1) + V(r2))
             return r;
@@ -125,6 +125,13 @@ ast_result resolve_ast(const ast_node *node)
                 r.ival = V(r1) == V(r2);
             }
             return r;
+        case TOK_NE_OP:
+            if (r1.type == AST_RESULT_TYPE_STR && r2.type == AST_RESULT_TYPE_STR) {
+                r.ival = strcmp(r1.sval, r2.sval) != 0;
+            } else {
+                r.ival = V(r1) != V(r2);
+            }
+            return r;
         case '<':
             r.ival = V(r1) < V(r2) ? 1 : 0;
             return r;
@@ -143,7 +150,7 @@ ast_result resolve_ast(const ast_node *node)
             return r;
 
         default:
-            die("Didn't recognize token type 0x%x / %d (as char: %c, as str: %s)", node->token_type, node->token_type,
-                isprint(node->token_type) ? node->token_type : ' ', node->s);
+            die("Didn't recognize token type 0x%x / %d (as char: '%c', as str: %s)", node->tok_type, node->tok_type,
+                isprint(node->tok_type) ? node->tok_type : ' ', node->s);
     }
 }

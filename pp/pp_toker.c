@@ -38,13 +38,13 @@ void set_token_file(token_state *ts, FILE *f, const char *filename)
     ts->unget_buf = NULL;
 }
 
-static void read_line_from_file(token_state *ts)
+static int read_line_from_file(token_state *ts)
 {
     TOKEN_STATE_CHECK_ALLOC(ts);
     if (getline((char **)&ts->line, &ts->line_sz, ts->f) < 0) {
         if (feof(ts->f)) {
             ts->end = ts->ind = 0;
-            return;
+            return EOF;
         }
         die("reading input file: %s", strerror(errno));
     }
@@ -58,6 +58,7 @@ static void read_line_from_file(token_state *ts)
     } else {
         ts->line_is_directive = 0;
     }
+    return 0;
 }
 
 static int token_string_getc(token_state *ts)
@@ -77,7 +78,9 @@ static int token_string_getc(token_state *ts)
             if (feof(ts->f)) {
                 return EOF;
             }
-            read_line_from_file(ts);
+            if (read_line_from_file(ts) == EOF) {
+                return EOF;
+            }
         } else {
             return EOF;
         }

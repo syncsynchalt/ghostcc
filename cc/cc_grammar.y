@@ -9,7 +9,7 @@ extern void yyerror(const char *s);
 ast_node *new_node(node_type t)
 {
     ast_node *n = calloc(1, sizeof(*n));
-    n->node_type = t;
+    n->type = t;
     return n;
 }
 

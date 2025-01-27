@@ -1,5 +1,6 @@
 *.o
 *.a
+a.out
 test-asm/prog-*
 pp/ghostpp
 cc/ghostcc

@@ -28,8 +28,8 @@ typedef enum {
 } node_type;
 
 typedef struct _ast_node {
-    node_type node_type;
-    token_type token_type;
+    node_type type;
+    token_type tok_type;
 
     char *s;
     int ival;
