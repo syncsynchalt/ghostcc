@@ -4,9 +4,8 @@
 #include <string>
 #include <sstream>
 extern "C" {
-#include "preprocessor.h"
+#include "../../lib/die.h"
 }
-using namespace std::string_literals;
 
 std::string write_file(const std::string &contents)
 {
@@ -26,46 +25,6 @@ std::string read_file(const std::string &filename)
     return content;
 }
 
-std::string run_parser(const std::string &input, const std::string &extra_include_path)
-{
-    const auto infile = write_file(input);
-    FileDeleter fd(infile);
-    return run_parser_on_file(infile, extra_include_path);
-}
-
-std::string strip_line_hints(std::string s)
-{
-    size_t ind;
-    while (s[0] == '#') {
-        s = s.replace(0, s.find('\n') + 1, "");
-    }
-    while ((ind = s.find("\n#")) != std::string::npos) {
-        s = s.replace(ind+1, s.find('\n', ind+1) - ind, "");
-    }
-    return s;
-}
-
-std::string run_parser_on_file(const std::string &filename, const std::string &extra_include_path)
-{
-    const auto defs = defines_init();
-    const char *includes[3] = {"/usr/include", NULL};
-    if (!extra_include_path.empty()) {
-        includes[1] = extra_include_path.c_str();
-        includes[2] = NULL;
-    }
-    const auto outfile = write_file("");
-    FileDeleter fd(outfile);
-    FILE *in = fopen(filename.c_str(), "r");
-    FILE *out = fopen(outfile.c_str(), "w");
-    parse_state state = {0};
-    state.defs = defs;
-    state.include_paths = includes;
-    process_file(filename.c_str(), in, out, &state);
-    fclose(out);
-    fclose(in);
-    return strip_line_hints(read_file(outfile));
-}
-
 std::string print_ast_node_type(const ast_node *node)
 {
     switch (node->type) {
@@ -76,7 +35,6 @@ std::string print_ast_node_type(const ast_node *node)
         case NODE_INIT_LIST: return "(nt:init_list)";
         case NODE_DECL_LIST: return "(nt:decl_list)";
         case NODE_DECL_SPECIFIERS: return "(nt:decl_specifiers)";
-        case NODE_DECLARE: return "(nt:declare)";
         case NODE_STRUCT_MEMBERS: return "(nt:struct_members)";
         case NODE_TRANSLATION_UNIT: return "(nt:translation_unit)";
         case NODE_COMPOUND_STATEMENT: return "(nt:compound_statement)";
@@ -85,8 +43,14 @@ std::string print_ast_node_type(const ast_node *node)
         case NODE_FUNCTION: return "(nt:function)";
         case NODE_ABSTRACT: return "(nt:abstract)";
         case NODE_ABSTRACT_TYPE: return "(nt:abstract_type)";
-        default:
+        case NODE_OTHER:
+        case NODE_INT:
+        case NODE_FLT:
+        case NODE_STR:
+        case NODE_CHA:
             return "";
+        default:
+            die("Unknown node type %d", node->type);
     }
 }
 
@@ -167,7 +131,7 @@ std::string print_ast_node(const ast_node *node)
     return result;
 }
 
-std::string print_ast(const ast_node *node)
+std::string print_ast_inner(const ast_node *node, int indent)
 {
     auto result = std::string();
 
@@ -202,4 +166,9 @@ std::string print_ast(const ast_node *node)
 
     result += ")";
     return result;
+}
+
+std::string print_ast(const ast_node *node)
+{
+    return print_ast_inner(node, 0);
 }

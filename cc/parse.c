@@ -4,16 +4,21 @@
 #include "cc_lex.h"
 
 FILE *cc_input = NULL;
-char *cc_filename = NULL;
+const char *cc_filename = NULL;
 int cc_lineno = 0;
 
-int process_file(char *startfile, FILE *in, FILE *out)
+int process_file(const char *startfile, FILE *in, FILE *out)
+{
+    parse_ast(startfile, in);
+    return 0;
+}
+
+ast_node *parse_ast(const char *file, FILE *in)
 {
     cc_input = in;
-    cc_filename = startfile;
+    cc_filename = file;
     cc_lineno = 0;
 
     yyparse();
-    ast_node *ast = cc_parse_result;
-    return 0;
+    return cc_parse_result;
 }

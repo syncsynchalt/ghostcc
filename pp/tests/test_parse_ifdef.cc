@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <fstream>
-#include "helper.h"
+#include "pp_helper.h"
 
 TEST(IfDefTest, Simple)
 {

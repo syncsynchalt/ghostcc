@@ -145,7 +145,7 @@ ast_result resolve_ast(const ast_node *node)
             r.ival = V(r1) >= V(r2) ? 1 : 0;
             return r;
         case TOK_ID:
-            fprintf(stderr, "Warning: ignoring unrecognized identifier %s\n", node->s);
+            // fprintf(stderr, "Warning: ignoring unrecognized identifier %s\n", node->s);
             r.ival = 0;
             return r;
 

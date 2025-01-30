@@ -12,5 +12,5 @@ test: all
 	$(MAKE) -C tests
 
 clean:
-	rm -f *.o libcommon.a
+	rm -f *.o libcommon.a a.out
 	$(MAKE) -C tests $@

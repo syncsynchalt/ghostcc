@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
-#include "helper.h"
+#include "pp_helper.h"
 extern "C" {
 #include "preprocessor.h"
 }
 
-TEST(TestParse, EmptyFile)
+TEST(ParseTest, EmptyFile)
 {
     const auto output = run_parser(R"(
 )");
@@ -32,7 +32,24 @@ foo
     EXPECT_EQ(" \nfoo\n", strip_line_hints(read_file(outfile)));
 }
 
-TEST(TestParse, TernaryShortCircuit)
+TEST(ParseTest, SolidCommentBlock)
+{
+    // error while parsing comments of continuous asterisks
+    auto output = run_parser(R"(
+/******************************************************************************
+ *  Even number of asterisks.                                                 *
+ ******************************************************************************/
+)");
+    EXPECT_EQ("\n \n", output);
+    output = run_parser(R"(
+/*****************************************************************************
+ *  Odd number of asterisks.                                                 *
+ *****************************************************************************/
+)");
+    EXPECT_EQ("\n \n", output);
+}
+
+TEST(ParseTest, TernaryShortCircuit)
 {
     const auto output = run_parser(R"(
 #define FOO
@@ -46,7 +63,7 @@ TEST(TestParse, TernaryShortCircuit)
     EXPECT_EQ("\n foo\n", output);
 }
 
-TEST(TestParse, HasInclude)
+TEST(ParseTest, HasInclude)
 {
     const auto output = run_parser(R"(
 #if __has_include(<foo.h>)
@@ -58,7 +75,7 @@ bar
     EXPECT_EQ("\n", output);
 }
 
-TEST(TestParse, LeadingSpace)
+TEST(ParseTest, LeadingSpace)
 {
     const auto output = run_parser(std::string("\t") + R"(  #define FOO
     # if defined(FOO)
@@ -68,13 +85,13 @@ TEST(TestParse, LeadingSpace)
     EXPECT_EQ(" bar\n", output);
 }
 
-TEST(TestParse, LeadingDirective)
+TEST(ParseTest, LeadingDirective)
 {
     const auto output = run_parser("#define FOO 1\n#if FOO\n bar\n#endif\n");
     EXPECT_EQ(" bar\n", output);
 }
 
-TEST(TestParse, NotEqual)
+TEST(ParseTest, NotEqual)
 {
     const auto output = run_parser(R"(
 #define FOO 1
@@ -87,7 +104,7 @@ TEST(TestParse, NotEqual)
     EXPECT_EQ("\n foo\n", output);
 }
 
-TEST(TestParse, DirectiveInComment)
+TEST(ParseTest, DirectiveInComment)
 {
     const auto output = run_parser(R"(
 /*

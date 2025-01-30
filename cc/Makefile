@@ -17,5 +17,5 @@ y.tab.c: cc_grammar.y
 	yacc -d $^
 
 clean:
-	rm -f *.o ghostcc y.tab.h y.tab.c
-	# $(MAKE) -C tests $@
+	rm -f *.o ghostcc y.tab.h y.tab.c a.out
+	$(MAKE) -C tests $@

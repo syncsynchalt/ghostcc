@@ -12,6 +12,6 @@ run-%:
 	@echo
 
 clean:
-	rm -f prog-* *.o
+	rm -f prog-* *.o a.out
 
 .PHONY: all clean

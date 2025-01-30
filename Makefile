@@ -11,6 +11,7 @@ build:
 test:
 	$(MAKE) -C lib test
 	$(MAKE) -C pp test
+	$(MAKE) -C cc test
 
 clean:
 	$(MAKE) -C lib clean

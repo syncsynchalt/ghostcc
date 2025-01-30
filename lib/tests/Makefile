@@ -15,4 +15,4 @@ run: tests
 	./tests
 
 clean:
-	rm -f *.o tests
+	rm -f *.o tests a.out

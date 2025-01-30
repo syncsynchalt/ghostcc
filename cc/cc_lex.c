@@ -25,6 +25,10 @@ static int read_next_line(void);
 
 int yylex(void)
 {
+    if (!type_names) {
+        type_names = hashmap_init(16);
+    }
+
     if (lex_line_index >= lex_line_end) {
         if (read_next_line() < 0) {
             yylval = NULL;
@@ -117,13 +121,15 @@ static int cc_ungetch(int c, void *unused)
 
 void check_for_typedef(const ast_node *node)
 {
-    while (node && node->tok_type != TOK_KW_TYPEDEF) {
-        node = node->left;
-    }
-    if (node) {
-        die("todo figure out how to find typedef name from AST");
-    }
-    if (!type_names) {
-        type_names = hashmap_init(16);
+    // left contains TYPEDEF, right is a list with names on left
+    if (contains_token(node->left, TOK_KW_TYPEDEF)) {
+        if (!node->right || !node->right->list_len) {
+            die("Unexpected lack of list on right of typedef decl");
+        }
+        size_t i;
+        for (i = 0; i < node->right->list_len; i++) {
+            char *n = node->right->list[i]->left->s;
+            hashmap_add(type_names, n, n);
+        }
     }
 }

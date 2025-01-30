@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "helper.h"
+#include "pp_helper.h"
 extern "C" {
 #include "../pp_lex.h"
 #include "../pp_ast.h"

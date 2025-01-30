@@ -254,13 +254,13 @@ declaration
 	            {
 	                $$ = combine_binary($1, new_node(NODE_DECL_SPECIFIERS), NULL);
 	                f($2);
-	                check_for_typedef($1);
+	                check_for_typedef($$);
                 }
 	| declaration_specifiers init_declarator_list ';'
 	            {
 	                $$ = combine_binary($1, new_node(NODE_DECL_SPECIFIERS), $2);
 	                f($3);
-	                check_for_typedef($1);
+	                check_for_typedef($$);
                 }
 	;
 
@@ -282,8 +282,8 @@ init_declarator_list
 
 /* name [= initializer] */
 init_declarator
-	: declarator                    { $$ = combine_binary($1, new_node(NODE_DECLARE), NULL); }
-	| declarator '=' initializer    { $$ = combine_binary($1, new_node(NODE_DECLARE), $3); f($2); }
+	: declarator                    { $$ = combine_binary($1, new_node('='), NULL); }
+	| declarator '=' initializer    { $$ = combine_binary($1, $2, $3); }
 	;
 
 storage_class_specifier

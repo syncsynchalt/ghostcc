@@ -57,3 +57,13 @@ void free_ast_node(ast_node *node)
     free(node->s);
     free(node);
 }
+
+int contains_token(const ast_node *node, token_type t)
+{
+    if (!node) {
+        return 0;
+    }
+    return (node->left && contains_token(node->left, t)) ||
+        (node->right && contains_token(node->right, t)) ||
+        node->tok_type == t;
+}

@@ -47,9 +47,9 @@ static char *keywords[] = {"auto",     "break",  "case",     "char",   "const", 
 static void eat_comment(int (*getch)(void *), void *param)
 {
     int comment_level = 1;
+    // xxx todo need to recognize and ignore directives
+    int c = getch(param);
     for (;;) {
-        // xxx todo need to recognize and ignore directives
-        int c = getch(param);
         if (c == EOF) {
             die("EOF while looking for end of comment");
         }
@@ -57,6 +57,8 @@ static void eat_comment(int (*getch)(void *), void *param)
             c = getch(param);
             if (c == '*') {
                 comment_level++;
+            } else {
+                continue;
             }
         } else if (c == '*') {
             c = getch(param);
@@ -65,8 +67,11 @@ static void eat_comment(int (*getch)(void *), void *param)
                 if (comment_level == 0) {
                     return;
                 }
+            } else {
+                continue;
             }
         }
+        c = getch(param);
     }
 }
 

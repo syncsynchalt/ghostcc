@@ -1,6 +1,6 @@
 SRC=$(wildcard *.cc)
 OBJ=$(patsubst %.cc,%.o,$(SRC)) ../../lib/tests/helper.o
-APP_OBJ=$(filter-out ../pp.o,$(wildcard ../*.o))
+APP_OBJ=$(filter-out ../cc.o,$(wildcard ../*.o))
 
 CXXFLAGS=-w -g -I/opt/homebrew/include -I.. -I../../lib -std=c++14
 LDFLAGS=-L/opt/homebrew/lib -lgtest -lgtest_main -L../../lib -lcommon

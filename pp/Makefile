@@ -17,5 +17,5 @@ y.tab.c: pp_grammar.y
 	yacc -d $^
 
 clean:
-	rm -f *.o ghostpp y.tab.h y.tab.c
+	rm -f *.o ghostpp y.tab.h y.tab.c a.out
 	$(MAKE) -C tests $@

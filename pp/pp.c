@@ -20,15 +20,22 @@ const char **builtin_include_paths(size_t *num_include_paths)
 
     include_paths = malloc(sizeof(*include_paths) * (*num_include_paths + 6));
     include_paths[(*num_include_paths)++] = strdup("/usr/include");
-    // include_paths[(*num_include_paths)++] = strdup("/usr/include/aarch64-linux-gnu");
-    // include_paths[(*num_include_paths)++] = strdup("/usr/lib/gcc/aarch64-linux-gnu/12/include");
 
+    char buf[512];
     FILE *p = popen("xcrun --show-sdk-path", "r");
     if (p) {
-        char buf[512];
         if (fgets(buf, sizeof(buf), p) && strlen(buf)) {
             const size_t len = strcspn(buf, "\r\n");
             snprintf(buf+len, sizeof(buf)-len, "/usr/include");
+            include_paths[(*num_include_paths)++] = strdup(buf);
+        }
+        pclose(p);
+    }
+    p = popen("clang -print-resource-dir", "r");
+    if (p) {
+        if (fgets(buf, sizeof(buf), p) && strlen(buf)) {
+            const size_t len = strcspn(buf, "\r\n");
+            snprintf(buf+len, sizeof(buf)-len, "/include");
             include_paths[(*num_include_paths)++] = strdup(buf);
         }
         pclose(p);
