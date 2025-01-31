@@ -13,8 +13,7 @@ typedef enum {
     NODE_CAST,
     NODE_ID_LIST,
     NODE_INIT_LIST,
-    NODE_DECL_LIST,
-    NODE_DECL_SPECIFIERS,
+    NODE_DECL,
     NODE_STRUCT_MEMBERS,
     NODE_TRANSLATION_UNIT,
     NODE_COMPOUND_STATEMENT,
@@ -46,3 +45,4 @@ extern ast_node *make_ast_node(const token t, ast_node *left, ast_node *right);
 extern void add_to_ast_list(ast_node *node, ast_node *list_member);
 extern void free_ast_node(ast_node *node);
 extern int contains_token(const ast_node *node, token_type t);
+extern char *print_ast(const ast_node *node);

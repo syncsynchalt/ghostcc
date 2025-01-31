@@ -5,11 +5,71 @@ TEST(TypedefTest, RegisterTypeName)
 {
     const auto ast = run_grammar(R"(
 typedef int foo;
-int main()
+int main(int argc, char **argv)
 {
     int a = 1;
     foo b = 2;
 }
 )");
-    EXPECT_EQ("\n", print_ast(ast));
+
+    const auto def = ast->list[0];
+    const auto statements = ast->list[1]->list[0]->left;
+    const auto decl1 = statements->list[0];
+    const auto decl2 = statements->list[1];
+
+    EXPECT_EQ(R"(
+(
+  (nt:decl)
+  (
+    typedef
+    int
+    NULL
+  )
+  (
+    (nt:list)
+    [
+      (
+        =
+        ID:foo
+        NULL
+      )
+    ]
+  )
+)
+)", PrintAst(def));
+
+
+    EXPECT_EQ(R"(
+(
+  (nt:decl)
+  int
+  (
+    (nt:list)
+    [
+      (
+        =
+        ID:a
+        INT:1
+      )
+    ]
+  )
+)
+)", PrintAst(decl1));
+
+    EXPECT_EQ(R"(
+(
+  (nt:decl)
+  TYPENAME:foo
+  (
+    (nt:list)
+    [
+      (
+        =
+        ID:b
+        INT:2
+      )
+    ]
+  )
+)
+)", PrintAst(decl2));
 }

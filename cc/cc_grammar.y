@@ -13,6 +13,13 @@ ast_node *new_node(node_type t)
     return n;
 }
 
+ast_node *new_token(token_type t)
+{
+    ast_node *n = new_node(NODE_OTHER);
+    n->tok_type = t;
+    return n;
+}
+
 ast_node *combine_binary(ast_node *left, ast_node *node, ast_node *right)
 {
     node->left = left;
@@ -252,13 +259,13 @@ constant_expression
 declaration
 	: declaration_specifiers ';'
 	            {
-	                $$ = combine_binary($1, new_node(NODE_DECL_SPECIFIERS), NULL);
+	                $$ = combine_binary($1, new_node(NODE_DECL), NULL);
 	                f($2);
 	                check_for_typedef($$);
                 }
 	| declaration_specifiers init_declarator_list ';'
 	            {
-	                $$ = combine_binary($1, new_node(NODE_DECL_SPECIFIERS), $2);
+	                $$ = combine_binary($1, new_node(NODE_DECL), $2);
 	                f($3);
 	                check_for_typedef($$);
                 }
@@ -276,13 +283,13 @@ declaration_specifiers
 
 /* list of name [= initializer] */
 init_declarator_list
-	: init_declarator                               { $$ = new_node(NODE_DECL_LIST); add_to_ast_list($$, $1); }
+	: init_declarator                               { $$ = new_node(NODE_LIST); add_to_ast_list($$, $1); }
 	| init_declarator_list ',' init_declarator      { $$ = $1; add_to_ast_list($1, $3); f($2); }
 	;
 
 /* name [= initializer] */
 init_declarator
-	: declarator                    { $$ = combine_binary($1, new_node('='), NULL); }
+	: declarator                    { $$ = combine_binary($1, new_token('='), NULL); }
 	| declarator '=' initializer    { $$ = combine_binary($1, $2, $3); }
 	;
 
@@ -482,6 +489,7 @@ labeled_statement
 	;
 
 /* braced list of statements */
+/* todo: consider allowing decls amidst other statements */
 compound_statement
 	: '{' '}'
             { $$ = combine_binary(NULL, new_node(NODE_COMPOUND_STATEMENT), NULL); f2($1, $2); }
@@ -494,7 +502,7 @@ compound_statement
 	;
 
 declaration_list
-	: declaration                       { $$ = new_node(NODE_DECL_LIST); add_to_ast_list($$, $1); }
+	: declaration                       { $$ = new_node(NODE_LIST); add_to_ast_list($$, $1); }
 	| declaration_list declaration      { add_to_ast_list($1, $2); $$ = $1; }
 	;
 
@@ -567,11 +575,11 @@ function_definition
 	: declaration_specifiers declarator declaration_list compound_statement
 	    { die("Un-prototyped function declarations not supported"); }
 	| declaration_specifiers declarator compound_statement
-	    { $$ = combine_binary($2, new_node(NODE_FUNCTION), $3); $2->left = $1; }
+	    { $$ = combine_binary($1, new_node(NODE_FUNCTION), $2); add_to_ast_list($$, $3); }
 	| declarator declaration_list compound_statement
 	    { die("Un-prototyped function declarations not supported"); }
 	| declarator compound_statement
-	    { $$ = combine_binary($2, new_node(NODE_FUNCTION), NULL); }
+	    { $$ = combine_binary(NULL, new_node(NODE_FUNCTION), $1); add_to_ast_list($$, $2); }
 	;
 
 %%

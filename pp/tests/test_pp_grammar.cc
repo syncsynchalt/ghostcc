@@ -30,19 +30,75 @@ TEST(GrammarTest, TestExhaustive)
 TEST(GrammarTest, TestParser)
 {
     auto r = process_file("1 * 2");
-    ASSERT_EQ("(1*2)", print_ast(r));
+    ASSERT_EQ(R"(
+(
+  *
+  INT:1
+  INT:2
+)
+)", PrintAst(r));
 
     r = process_file("3 + (2 * 1)");
-    ASSERT_EQ("(3+(2*1))", print_ast(r));
+    ASSERT_EQ(R"(
+(
+  +
+  INT:3
+  (
+    *
+    INT:2
+    INT:1
+  )
+)
+)", PrintAst(r));
 }
 
 TEST(GrammarTest, TestTernary)
 {
     auto r = process_file("1 ? 2 : 3+4");
-    ASSERT_EQ("(1?(2:(3+4)))", print_ast(r));
+    ASSERT_EQ(R"(
+(
+  ?
+  INT:1
+  (
+    :
+    INT:2
+    (
+      +
+      INT:3
+      INT:4
+    )
+  )
+)
+)", PrintAst(r));
 
     r = process_file("1 ? 2 ? 6 : 7 : 3 ? 4 : 5");
-    ASSERT_EQ("(1?((2?(6:7)):(3?(4:5))))", print_ast(r));
+    ASSERT_EQ(R"(
+(
+  ?
+  INT:1
+  (
+    :
+    (
+      ?
+      INT:2
+      (
+        :
+        INT:6
+        INT:7
+      )
+    )
+    (
+      ?
+      INT:3
+      (
+        :
+        INT:4
+        INT:5
+      )
+    )
+  )
+)
+)", PrintAst(r));
 }
 
 TEST(GrammarParseTest, TestIntResolution)

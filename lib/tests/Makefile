@@ -1,7 +1,7 @@
 SRC=$(wildcard *.cc)
 OBJ=$(patsubst %.cc,%.o,$(SRC))
 
-CXXFLAGS=-w -g -I/opt/homebrew/include -std=c++14
+CXXFLAGS=-w -g -I/opt/homebrew/include -I.. -std=c++14
 LDFLAGS=-L/opt/homebrew/lib -lgtest -lgtest_main -L.. -lcommon
 
 all: test
