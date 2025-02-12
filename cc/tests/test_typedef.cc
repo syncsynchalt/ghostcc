@@ -13,7 +13,8 @@ int main(int argc, char **argv)
 )");
 
     const auto def = ast->list[0];
-    const auto statements = ast->list[1]->list[0]->left;
+    const auto fn = ast->list[1];
+    const auto statements = fn->list[0];
     const auto decl1 = statements->list[0];
     const auto decl2 = statements->list[1];
 

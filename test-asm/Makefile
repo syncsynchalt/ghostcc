@@ -6,7 +6,7 @@ run-%:
 	$(eval prog=$(patsubst run-%,prog-%,$@))
 	$(eval ofile=$(patsubst run-%,%.o,$@))
 	$(eval sfile=$(patsubst run-%,%.s,$@))
-	as $(sfile)
+	as $(sfile) -o $(ofile)
 	ld -o $(prog) $(ofile) -lSystem -syslibroot $(SYSLIBROOT)
 	./$(prog)
 	@echo

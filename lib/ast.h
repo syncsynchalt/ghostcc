@@ -16,7 +16,6 @@ typedef enum {
     NODE_DECL,
     NODE_STRUCT_MEMBERS,
     NODE_TRANSLATION_UNIT,
-    NODE_COMPOUND_STATEMENT,
     NODE_BITFIELD,
     NODE_PARAM_LIST,
     NODE_FUNCTION,
@@ -30,7 +29,7 @@ typedef struct _ast_node {
     token_type tok_type;
 
     char *s;
-    int ival;
+    unsigned long ival;
     double fval;
     unsigned char cval;
 

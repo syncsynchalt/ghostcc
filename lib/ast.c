@@ -52,6 +52,7 @@ void add_to_ast_list(ast_node *node, ast_node *list_member)
         node->list = realloc(node->list, (node->list_len + 6) * sizeof(ast_node *));
     }
     node->list[node->list_len++] = list_member;
+    node->list[node->list_len] = NULL;
 }
 
 void free_ast_node(ast_node *node)
@@ -145,7 +146,6 @@ static char *get_ast_node_type(const ast_node *node)
         case NODE_DECL: return "(nt:decl)";
         case NODE_STRUCT_MEMBERS: return "(nt:struct_members)";
         case NODE_TRANSLATION_UNIT: return "(nt:translation_unit)";
-        case NODE_COMPOUND_STATEMENT: return "(nt:compound_statement)";
         case NODE_BITFIELD: return "(nt:bitfield)";
         case NODE_PARAM_LIST: return "(nt:param_list)";
         case NODE_FUNCTION: return "(nt:function)";
@@ -237,7 +237,7 @@ static void add_ast_token(const ast_node *node, str_t *out)
         snprintf(buf, sizeof(buf), "CHA:%c", node->cval);
         add_to_str(out, buf);
     } else if (node->type == NODE_INT) {
-        snprintf(buf, sizeof(buf), "INT:%d", node->ival);
+        snprintf(buf, sizeof(buf), "INT:%ld", node->ival);
         add_to_str(out, buf);
     } else if (node->type == NODE_FLT) {
         snprintf(buf, sizeof(buf), "FLT:%f", node->fval);

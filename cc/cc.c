@@ -5,6 +5,7 @@
 #include "parse.h"
 #include "common.h"
 #include "die.h"
+#include "asm.h"
 
 static char *infile = NULL;
 static char *outfile = "a.out";
@@ -40,15 +41,46 @@ static FILE *preprocess_file(const char *filename, char **include_paths)
     return f;
 }
 
+static void as_out(const ast_node *ast, char *file, size_t file_sz)
+{
+    snprintf(file, file_sz, "/tmp/ghostcc.tmp.XXXXXX");
+    mkstemp(file);
+
+    FILE *f = fopen(file, "w");
+    if (!f) {
+        die("Can't open %s: %s", file, strerror(errno));
+    }
+    read_ast(ast, f);
+    fclose(f);
+}
+
+static void run_as(const char *input, const char *output)
+{
+    char cmd[128];
+    snprintf(cmd, sizeof(cmd), "as \"%s\" -o \"%s\"", input, output);
+    const int ret = system(cmd);
+    if (ret) {
+        die("Error running assembler");
+    }
+}
+
 int main(const int argc, char **argv)
 {
     int arg;
     size_t num_include_paths = 0;
     char **include_paths = calloc(1, sizeof(*include_paths) * 1);
+    int pp_only = 0;
+    int as_only = 0;
 
-    while ((arg = getopt(argc, argv, "o:I:")) != -1) {
+    while ((arg = getopt(argc, argv, "ESo:I:")) != -1) {
         if (arg == '?' || arg == ':') {
             usage(argc, argv);
+        }
+        if (arg == 'E') {
+            pp_only = 1;
+        }
+        if (arg == 'S') {
+            as_only = 1;
         }
         if (arg == 'o') {
             outfile = optarg;
@@ -73,16 +105,29 @@ int main(const int argc, char **argv)
         usage(argc, argv);
     }
 
-    FILE *out = fopen(outfile, "w");
-    if (!out) {
-        die("Can't open %s for writing: %s", outfile, strerror(errno));
-    }
-    output = out;
-
     FILE *in = preprocess_file(infile, include_paths);
-    process_file(infile, in, out);
-    fclose(out);
-    fclose(in);
+    if (pp_only) {
+        char buf[64];
+        while (fgets(buf, sizeof(buf), in)) {
+            fputs(buf, stdout);
+        }
+        exit(0);
+    }
+
+    const ast_node *ast = parse_ast(infile, in);
+    char as_file[64];
+    as_out(ast, as_file, sizeof(as_file));
+    if (as_only) {
+        char buf[64];
+        FILE *f = fopen(as_file, "r");
+        while (fgets(buf, sizeof(buf), f)) {
+            fputs(buf, stdout);
+        }
+        unlink(as_file);
+        exit(0);
+    }
+    run_as(as_file, outfile);
+    unlink(as_file);
 
     int i;
     for (i = 0; i < num_include_paths; i++) {
