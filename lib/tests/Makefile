@@ -8,6 +8,9 @@ all: test
 
 test: tests run
 
+../libcommon.a:
+	$(MAKE) -C .. libcommon.a
+
 tests: $(OBJ) ../libcommon.a
 	c++ -o tests $(OBJ) $(LDFLAGS)
 

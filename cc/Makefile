@@ -9,6 +9,9 @@ all: ghostcc
 test: all
 	$(MAKE) -C tests test
 
+../lib/libcommon.a:
+	$(MAKE) -C ../lib libcommon.a
+
 ghostcc: $(OBJ) ../lib/libcommon.a
 	cc -o $@ $^ $(LDFLAGS)
 
